@@ -24,6 +24,11 @@ where
     M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
+    pub fn commit_unchecked(self) -> OwnedCore<G> {
+        let VertexMutation { storage: vertices } = self;
+        Core::empty().fuse(vertices)
+    }
+
     pub fn to_ref_core(&self) -> RefCore<G> {
         Core::empty().fuse(&self.storage)
     }
@@ -80,9 +85,7 @@ where
     type Error = GraphError;
 
     fn commit(self) -> Result<Self::Output, Self::Error> {
-        let VertexMutation {
-            storage: vertices, ..
-        } = self;
+        let VertexMutation { storage: vertices } = self;
         // In a consistent graph, all vertices must have a leading arc.
         for (_, vertex) in vertices.iter() {
             if vertex.arc.is_none() {

@@ -39,6 +39,28 @@ where
     inner: FaceMutation<M>,
 }
 
+impl<M> Mutation<M>
+where
+    M: Consistent + From<OwnedCore<Geometry<M>>> + Geometric + Into<OwnedCore<Geometry<M>>>,
+{
+    // This code may not be used when building certain profiles.
+    #[allow(dead_code)]
+    pub(in crate::graph) fn commit_unchecked(self) -> M {
+        self.inner.commit_unchecked().into()
+    }
+
+    // TODO: Avoid using `debug_assertions` to detect debug vs. release builds.
+    #[cfg(debug_assertions)]
+    pub(in crate::graph) fn commit_maybe_unchecked(self) -> Result<M, GraphError> {
+        self.commit()
+    }
+
+    #[cfg(not(debug_assertions))]
+    pub(in crate::graph) fn commit_maybe_unchecked(self) -> Result<M, GraphError> {
+        Ok(self.commit_unchecked())
+    }
+}
+
 impl<M> AsRef<Self> for Mutation<M>
 where
     M: Consistent + From<OwnedCore<Geometry<M>>> + Geometric + Into<OwnedCore<Geometry<M>>>,

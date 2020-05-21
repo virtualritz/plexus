@@ -38,6 +38,14 @@ where
     M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
+    pub fn commit_unchecked(self) -> OwnedCore<G> {
+        let EdgeMutation {
+            inner,
+            storage: (arcs, edges),
+        } = self;
+        inner.commit_unchecked().fuse(arcs).fuse(edges)
+    }
+
     pub fn to_ref_core(&self) -> RefCore<G> {
         self.inner
             .to_ref_core()
@@ -161,7 +169,6 @@ where
         let EdgeMutation {
             inner,
             storage: (arcs, edges),
-            ..
         } = self;
         // In a consistent graph, all arcs must have neighboring arcs and an
         // associated edge.

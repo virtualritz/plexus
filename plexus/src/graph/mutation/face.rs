@@ -32,6 +32,14 @@ where
     M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
+    pub fn commit_unchecked(self) -> OwnedCore<G> {
+        let FaceMutation {
+            inner,
+            storage: faces,
+        } = self;
+        inner.commit_unchecked().fuse(faces)
+    }
+
     pub fn to_ref_core(&self) -> RefCore<G> {
         self.inner.to_ref_core().fuse(&self.storage)
     }
@@ -184,7 +192,6 @@ where
         let FaceMutation {
             inner,
             storage: faces,
-            ..
         } = self;
         inner.commit().map(move |core| core.fuse(faces))
     }
