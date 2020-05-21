@@ -39,6 +39,7 @@ where
     inner: FaceMutation<M>,
 }
 
+// TODO: Avoid using `debug_assertions` to detect debug vs. release builds.
 impl<M> Mutation<M>
 where
     M: Consistent + From<OwnedCore<Geometry<M>>> + Geometric + Into<OwnedCore<Geometry<M>>>,
@@ -49,15 +50,52 @@ where
         self.inner.commit_unchecked().into()
     }
 
-    // TODO: Avoid using `debug_assertions` to detect debug vs. release builds.
-    #[cfg(debug_assertions)]
-    pub(in crate::graph) fn commit_maybe_unchecked(self) -> Result<M, GraphError> {
-        self.commit()
+    // This code may not be used when building certain profiles.
+    #[allow(dead_code)]
+    pub(in crate::graph) fn commit_unchecked_with<F, T, E>(
+        mut self,
+        f: F,
+    ) -> Result<(M, T), GraphError>
+    where
+        F: FnOnce(&mut Self) -> Result<T, E>,
+        E: Into<GraphError>,
+    {
+        match f(&mut self) {
+            Ok(value) => Ok((self.commit_unchecked(), value)),
+            Err(error) => {
+                self.abort();
+                Err(error.into())
+            }
+        }
     }
 
-    #[cfg(not(debug_assertions))]
     pub(in crate::graph) fn commit_maybe_unchecked(self) -> Result<M, GraphError> {
-        Ok(self.commit_unchecked())
+        #[cfg(debug_assertions)]
+        {
+            self.commit()
+        }
+        #[cfg(not(debug_assertions))]
+        {
+            Ok(self.commit_unchecked())
+        }
+    }
+
+    pub(in crate::graph) fn commit_maybe_unchecked_with<F, T, E>(
+        self,
+        f: F,
+    ) -> Result<(M, T), GraphError>
+    where
+        F: FnOnce(&mut Self) -> Result<T, E>,
+        E: Into<GraphError>,
+    {
+        #[cfg(debug_assertions)]
+        {
+            self.commit_with(f)
+        }
+        #[cfg(not(debug_assertions))]
+        {
+            self.commit_unchecked_with(f)
+        }
     }
 }
 
