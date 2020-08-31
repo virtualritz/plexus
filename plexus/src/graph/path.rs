@@ -20,8 +20,6 @@ use crate::IteratorExt as _;
 
 use Selector::ByKey;
 
-pub type OwnedPath<B> = Path<'static, B>;
-
 /// Non-intersecting path.
 ///
 /// A path is an ordered set of vertices that are joined by arcs. Paths are

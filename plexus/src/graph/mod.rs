@@ -302,7 +302,7 @@ pub use crate::graph::geometry::{
     ArcNormal, EdgeMidpoint, FaceCentroid, FaceNormal, FacePlane, VertexCentroid, VertexNormal,
     VertexPosition,
 };
-pub use crate::graph::path::{OwnedPath, Path};
+pub use crate::graph::path::Path;
 pub use crate::graph::vertex::{Vertex, VertexKey, VertexOrphan, VertexView};
 
 pub use Selector::ByIndex;
