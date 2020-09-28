@@ -11,7 +11,7 @@ use theon::AsPosition;
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
 use crate::entity::dijkstra;
-use crate::entity::storage::{AsStorage, AsStorageMut, AsStorageOf, OpaqueKey, SlotStorage};
+use crate::entity::storage::{AsStorage, AsStorageMut, AsStorageOf, Key, SlotEntityMap};
 use crate::entity::traverse::{Adjacency, Breadth, Depth, Trace, TraceAny, TraceFirst, Traversal};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::entity::Entity;
@@ -58,14 +58,14 @@ where
     G: GraphData,
 {
     type Key = VertexKey;
-    type Storage = SlotStorage<Self>;
+    type Storage = SlotEntityMap<Self>;
 }
 
 /// Vertex key.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct VertexKey(DefaultKey);
 
-impl OpaqueKey for VertexKey {
+impl Key for VertexKey {
     type Inner = DefaultKey;
 
     fn from_inner(key: Self::Inner) -> Self {

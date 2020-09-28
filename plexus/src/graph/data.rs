@@ -65,7 +65,7 @@ pub type Data<M> = <M as Parametric>::Data;
 ///
 /// [`AsPosition`]: crate::geometry::AsPosition
 /// [`MeshGraph`]: crate::graph::MeshGraph
-pub trait GraphData: Sized {
+pub trait GraphData: 'static + Sized {
     type Vertex: Copy;
     type Arc: Copy + Default;
     type Edge: Copy + Default;
@@ -81,7 +81,7 @@ impl GraphData for () {
 
 impl<T> GraphData for (T, T)
 where
-    T: Copy,
+    T: 'static + Copy,
 {
     type Vertex = Self;
     type Arc = ();
@@ -91,7 +91,7 @@ where
 
 impl<T> GraphData for (T, T, T)
 where
-    T: Copy,
+    T: 'static + Copy,
 {
     type Vertex = Self;
     type Arc = ();
@@ -101,7 +101,7 @@ where
 
 impl<T> GraphData for [T; 2]
 where
-    T: Copy,
+    T: 'static + Copy,
 {
     type Vertex = Self;
     type Arc = ();
@@ -111,7 +111,7 @@ where
 
 impl<T> GraphData for [T; 3]
 where
-    T: Copy,
+    T: 'static + Copy,
 {
     type Vertex = Self;
     type Arc = ();

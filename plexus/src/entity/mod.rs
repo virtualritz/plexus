@@ -6,7 +6,7 @@ pub mod view;
 
 use thiserror::Error;
 
-use crate::entity::storage::{Get, OpaqueKey, Remove, Sequence};
+use crate::entity::storage::{Dispatch, Key, Storage, Unjournaled};
 
 #[derive(Debug, Error, PartialEq)]
 pub enum EntityError {
@@ -17,6 +17,7 @@ pub enum EntityError {
 }
 
 pub trait Entity: Copy + Sized {
-    type Key: OpaqueKey;
-    type Storage: Default + Get<Self> + Remove<Self> + Sequence<Self>;
+    type Key: Key;
+    //type Storage: 'static + Default + Dispatch<Self> + Storage<Self> + Unjournaled;
+    type Storage: Default + Dispatch<Self> + Storage<Self> + Unjournaled;
 }

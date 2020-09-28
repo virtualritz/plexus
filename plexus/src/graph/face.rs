@@ -14,7 +14,7 @@ use theon::{AsPosition, AsPositionMut};
 use typenum::U3;
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
-use crate::entity::storage::{AsStorage, AsStorageMut, OpaqueKey, SlotStorage};
+use crate::entity::storage::{AsStorage, AsStorageMut, Key, SlotEntityMap};
 use crate::entity::traverse::{Adjacency, Breadth, Depth, Trace, TraceFirst, Traversal};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::entity::Entity;
@@ -75,14 +75,14 @@ where
     G: GraphData,
 {
     type Key = FaceKey;
-    type Storage = SlotStorage<Self>;
+    type Storage = SlotEntityMap<Self>;
 }
 
 /// Face key.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct FaceKey(DefaultKey);
 
-impl OpaqueKey for FaceKey {
+impl Key for FaceKey {
     type Inner = DefaultKey;
 
     fn from_inner(key: Self::Inner) -> Self {

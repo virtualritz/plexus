@@ -1,5 +1,6 @@
 use crate::entity::borrow::Reborrow;
-use crate::entity::storage::{AsStorage, Fuse, Storage};
+use crate::entity::storage::{AsStorage, Fuse, Get, Insert, StorageObject};
+use crate::entity::Entity;
 use crate::graph::core::Core;
 use crate::graph::data::{Data, GraphData, Parametric};
 use crate::graph::edge::ArcKey;
@@ -9,14 +10,15 @@ use crate::graph::vertex::{Vertex, VertexKey, VertexView};
 use crate::graph::GraphError;
 use crate::transact::Transact;
 
-type OwnedCore<G> = Core<G, Storage<Vertex<G>>, (), (), ()>;
-type RefCore<'a, G> = Core<G, &'a Storage<Vertex<G>>, (), (), ()>;
+type OwnedCore<G> = Core<G, <Vertex<G> as Entity>::Storage, (), (), ()>;
+type RefCore<'a, G> = Core<G, &'a StorageObject<Vertex<G>>, (), (), ()>;
 
 pub struct VertexMutation<M>
 where
     M: Parametric,
 {
-    storage: Storage<Vertex<Data<M>>>,
+    // TODO: Use and require journaled storage.
+    storage: <Vertex<Data<M>> as Entity>::Storage,
 }
 
 impl<M, G> VertexMutation<M>
@@ -55,7 +57,7 @@ where
     M: Parametric<Data = G>,
     G: GraphData,
 {
-    fn as_storage(&self) -> &Storage<Vertex<G>> {
+    fn as_storage(&self) -> &StorageObject<Vertex<G>> {
         &self.storage
     }
 }

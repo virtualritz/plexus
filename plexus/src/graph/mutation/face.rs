@@ -4,8 +4,9 @@ use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
 
 use crate::entity::borrow::Reborrow;
-use crate::entity::storage::{AsStorage, Fuse, Storage};
+use crate::entity::storage::{AsStorage, Fuse, Get, Insert, Remove, StorageObject};
 use crate::entity::view::{Bind, ClosedView, Rebind, Unbind};
+use crate::entity::Entity;
 use crate::graph::core::{Core, OwnedCore, RefCore};
 use crate::graph::data::{Data, GraphData, Parametric};
 use crate::graph::edge::{Arc, ArcKey, ArcView};
@@ -23,7 +24,7 @@ where
     M: Parametric,
 {
     inner: EdgeMutation<M>,
-    storage: Storage<Face<Data<M>>>,
+    storage: <Face<Data<M>> as Entity>::Storage,
 }
 
 impl<M, G> FaceMutation<M>
@@ -131,7 +132,7 @@ where
     M: Parametric<Data = G>,
     G: GraphData,
 {
-    fn as_storage(&self) -> &Storage<Face<G>> {
+    fn as_storage(&self) -> &StorageObject<Face<G>> {
         &self.storage
     }
 }

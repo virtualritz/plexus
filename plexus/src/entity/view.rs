@@ -3,11 +3,11 @@ use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
-use crate::entity::storage::{AsStorage, AsStorageMut, OpaqueKey};
+use crate::entity::storage::{AsStorage, AsStorageMut, Get, Key};
 use crate::entity::Entity;
 
 pub trait ClosedView: Deref<Target = <Self as ClosedView>::Entity> {
-    type Key: OpaqueKey;
+    type Key: Key;
     type Entity: Entity<Key = Self::Key>;
 
     fn key(&self) -> Self::Key;

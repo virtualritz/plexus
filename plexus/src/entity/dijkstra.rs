@@ -3,7 +3,7 @@ use std::cmp::Reverse;
 use std::collections::hash_map::Entry;
 use std::collections::{BinaryHeap, HashMap, HashSet};
 
-use crate::entity::storage::AsStorage;
+use crate::entity::storage::{AsStorage, Sequence};
 use crate::entity::traverse::Adjacency;
 use crate::entity::view::{Bind, Unbind};
 use crate::entity::EntityError;

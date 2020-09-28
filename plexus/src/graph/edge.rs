@@ -10,7 +10,7 @@ use theon::space::{EuclideanSpace, Scalar, Vector};
 use theon::{AsPosition, AsPositionMut};
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
-use crate::entity::storage::{AsStorage, AsStorageMut, HashStorage, OpaqueKey, SlotStorage};
+use crate::entity::storage::{AsStorage, AsStorageMut, FnvEntityMap, Key, SlotEntityMap};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::entity::Entity;
 use crate::graph::data::{Data, GraphData, Parametric};
@@ -81,7 +81,7 @@ where
     G: GraphData,
 {
     type Key = ArcKey;
-    type Storage = HashStorage<Self>;
+    type Storage = FnvEntityMap<Self>;
 }
 
 /// Arc key.
@@ -107,7 +107,7 @@ impl Into<(VertexKey, VertexKey)> for ArcKey {
     }
 }
 
-impl OpaqueKey for ArcKey {
+impl Key for ArcKey {
     type Inner = (VertexKey, VertexKey);
 
     fn from_inner(key: Self::Inner) -> Self {
@@ -1205,14 +1205,14 @@ where
     G: GraphData,
 {
     type Key = EdgeKey;
-    type Storage = SlotStorage<Self>;
+    type Storage = SlotEntityMap<Self>;
 }
 
 /// Edge key.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct EdgeKey(DefaultKey);
 
-impl OpaqueKey for EdgeKey {
+impl Key for EdgeKey {
     type Inner = DefaultKey;
 
     fn from_inner(key: Self::Inner) -> Self {

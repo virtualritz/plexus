@@ -1,22 +1,29 @@
 use std::marker::PhantomData;
 
-use crate::entity::storage::{AsStorage, AsStorageMut, Fuse, Storage};
+use crate::entity::storage::{AsStorage, AsStorageMut, Fuse, StorageObject};
+use crate::entity::Entity;
 use crate::graph::data::{GraphData, Parametric};
 use crate::graph::edge::{Arc, Edge};
 use crate::graph::face::Face;
 use crate::graph::vertex::Vertex;
 
 /// A complete core that owns all of its storage.
-pub type OwnedCore<G> =
-    Core<G, Storage<Vertex<G>>, Storage<Arc<G>>, Storage<Edge<G>>, Storage<Face<G>>>;
+pub type OwnedCore<G> = Core<
+    G,
+    <Vertex<G> as Entity>::Storage,
+    <Arc<G> as Entity>::Storage,
+    <Edge<G> as Entity>::Storage,
+    <Face<G> as Entity>::Storage,
+>;
+
 /// A complete and ephemeral core with immutable references to all of its
 /// storage.
 pub type RefCore<'a, G> = Core<
     G,
-    &'a Storage<Vertex<G>>,
-    &'a Storage<Arc<G>>,
-    &'a Storage<Edge<G>>,
-    &'a Storage<Face<G>>,
+    &'a StorageObject<Vertex<G>>,
+    &'a StorageObject<Arc<G>>,
+    &'a StorageObject<Edge<G>>,
+    &'a StorageObject<Face<G>>,
 >;
 
 /// Adaptable graph representation that can incorporate arbitrary storage.
@@ -87,7 +94,7 @@ where
     V: AsStorage<Vertex<G>>,
     G: GraphData,
 {
-    fn as_storage(&self) -> &Storage<Vertex<G>> {
+    fn as_storage(&self) -> &StorageObject<Vertex<G>> {
         self.vertices.as_storage()
     }
 }
@@ -97,7 +104,7 @@ where
     A: AsStorage<Arc<G>>,
     G: GraphData,
 {
-    fn as_storage(&self) -> &Storage<Arc<G>> {
+    fn as_storage(&self) -> &StorageObject<Arc<G>> {
         self.arcs.as_storage()
     }
 }
@@ -107,7 +114,7 @@ where
     E: AsStorage<Edge<G>>,
     G: GraphData,
 {
-    fn as_storage(&self) -> &Storage<Edge<G>> {
+    fn as_storage(&self) -> &StorageObject<Edge<G>> {
         self.edges.as_storage()
     }
 }
@@ -117,7 +124,7 @@ where
     F: AsStorage<Face<G>>,
     G: GraphData,
 {
-    fn as_storage(&self) -> &Storage<Face<G>> {
+    fn as_storage(&self) -> &StorageObject<Face<G>> {
         self.faces.as_storage()
     }
 }
@@ -127,7 +134,7 @@ where
     V: AsStorageMut<Vertex<G>>,
     G: GraphData,
 {
-    fn as_storage_mut(&mut self) -> &mut Storage<Vertex<G>> {
+    fn as_storage_mut(&mut self) -> &mut StorageObject<Vertex<G>> {
         self.vertices.as_storage_mut()
     }
 }
@@ -137,7 +144,7 @@ where
     A: AsStorageMut<Arc<G>>,
     G: GraphData,
 {
-    fn as_storage_mut(&mut self) -> &mut Storage<Arc<G>> {
+    fn as_storage_mut(&mut self) -> &mut StorageObject<Arc<G>> {
         self.arcs.as_storage_mut()
     }
 }
@@ -147,7 +154,7 @@ where
     E: AsStorageMut<Edge<G>>,
     G: GraphData,
 {
-    fn as_storage_mut(&mut self) -> &mut Storage<Edge<G>> {
+    fn as_storage_mut(&mut self) -> &mut StorageObject<Edge<G>> {
         self.edges.as_storage_mut()
     }
 }
@@ -157,7 +164,7 @@ where
     F: AsStorageMut<Face<G>>,
     G: GraphData,
 {
-    fn as_storage_mut(&mut self) -> &mut Storage<Face<G>> {
+    fn as_storage_mut(&mut self) -> &mut StorageObject<Face<G>> {
         self.faces.as_storage_mut()
     }
 }
@@ -265,6 +272,11 @@ where
 impl<G, V, A, E, F> GraphData for Core<G, V, A, E, F>
 where
     G: GraphData,
+    // TODO: Remove these bounds.
+    V: 'static,
+    A: 'static,
+    E: 'static,
+    F: 'static,
 {
     type Vertex = G::Vertex;
     type Arc = G::Arc;

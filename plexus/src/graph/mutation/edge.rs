@@ -2,8 +2,9 @@ use fool::and;
 use std::ops::{Deref, DerefMut};
 
 use crate::entity::borrow::Reborrow;
-use crate::entity::storage::{AsStorage, Fuse, Storage};
+use crate::entity::storage::{AsStorage, Fuse, Get, Insert, InsertWithKey, Remove, StorageObject};
 use crate::entity::view::{Bind, ClosedView, Rebind};
+use crate::entity::Entity;
 use crate::graph::core::Core;
 use crate::graph::data::{Data, GraphData, Parametric};
 use crate::graph::edge::{Arc, ArcKey, ArcView, Edge, EdgeKey};
@@ -19,9 +20,20 @@ use crate::IteratorExt as _;
 pub type CompositeEdgeKey = (EdgeKey, (ArcKey, ArcKey));
 pub type CompositeEdge<G> = (Edge<G>, (Arc<G>, Arc<G>));
 
-type OwnedCore<G> = Core<G, Storage<Vertex<G>>, Storage<Arc<G>>, Storage<Edge<G>>, ()>;
-type RefCore<'a, G> =
-    Core<G, &'a Storage<Vertex<G>>, &'a Storage<Arc<G>>, &'a Storage<Edge<G>>, ()>;
+type OwnedCore<G> = Core<
+    G,
+    <Vertex<G> as Entity>::Storage,
+    <Arc<G> as Entity>::Storage,
+    <Edge<G> as Entity>::Storage,
+    (),
+>;
+type RefCore<'a, G> = Core<
+    G,
+    &'a StorageObject<Vertex<G>>,
+    &'a StorageObject<Arc<G>>,
+    &'a StorageObject<Edge<G>>,
+    (),
+>;
 
 pub struct EdgeMutation<M>
 where
@@ -29,8 +41,12 @@ where
 {
     inner: VertexMutation<M>,
     // TODO: Split this into two fields.
+    // TODO: Use and require journaled storage.
     #[allow(clippy::type_complexity)]
-    storage: (Storage<Arc<Data<M>>>, Storage<Edge<Data<M>>>),
+    storage: (
+        <Arc<Data<M>> as Entity>::Storage,
+        <Edge<Data<M>> as Entity>::Storage,
+    ),
 }
 
 impl<M, G> EdgeMutation<M>
@@ -99,7 +115,7 @@ where
     M: Parametric<Data = G>,
     G: GraphData,
 {
-    fn as_storage(&self) -> &Storage<Arc<G>> {
+    fn as_storage(&self) -> &StorageObject<Arc<G>> {
         &self.storage.0
     }
 }
@@ -109,7 +125,7 @@ where
     M: Parametric<Data = G>,
     G: GraphData,
 {
-    fn as_storage(&self) -> &Storage<Edge<G>> {
+    fn as_storage(&self) -> &StorageObject<Edge<G>> {
         &self.storage.1
     }
 }
