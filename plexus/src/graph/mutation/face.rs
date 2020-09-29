@@ -4,7 +4,7 @@ use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
 
 use crate::entity::borrow::Reborrow;
-use crate::entity::storage::{AsStorage, AsStorageMut, Fuse, Get, Insert, Remove, StorageObject};
+use crate::entity::storage::{AsStorage, AsStorageMut, Fuse, StorageObject};
 use crate::entity::view::{Bind, ClosedView, Rebind, Unbind};
 use crate::entity::Entity;
 use crate::graph::core::{Core, OwnedCore, RefCore};

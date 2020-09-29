@@ -18,6 +18,5 @@ pub enum EntityError {
 
 pub trait Entity: Copy + Sized {
     type Key: Key;
-    //type Storage: 'static + Default + Dispatch<Self> + Storage<Self> + Unjournaled;
     type Storage: Default + Dispatch<Self> + Storage<Self> + Unjournaled;
 }

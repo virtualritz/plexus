@@ -82,7 +82,7 @@ where
     fn keys<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = E::Key>>;
 }
 
-pub trait Storage<E>: Get<E> + Remove<E> + Sequence<E>
+pub trait Storage<E>: AsStorage<E> + AsStorageMut<E> + Get<E> + Remove<E> + Sequence<E>
 where
     E: Entity,
 {
@@ -90,7 +90,7 @@ where
 
 impl<T, E> Storage<E> for T
 where
-    T: Get<E> + Remove<E> + Sequence<E>,
+    T: AsStorage<E> + AsStorageMut<E> + Get<E> + Remove<E> + Sequence<E>,
     E: Entity,
 {
 }
@@ -138,30 +138,10 @@ where
     fn as_storage(&self) -> &StorageObject<E>;
 }
 
-impl<E> AsStorage<E> for dyn ExtrinsicStorage<E>
-where
-    E: Entity,
-    E::Storage: Dispatch<E, Object = dyn ExtrinsicStorage<E>>,
-{
-    fn as_storage(&self) -> &StorageObject<E> {
-        self
-    }
-}
-
-impl<E> AsStorage<E> for dyn IntrinsicStorage<E>
-where
-    E: Entity,
-    E::Storage: Dispatch<E, Object = dyn IntrinsicStorage<E>>,
-{
-    fn as_storage(&self) -> &StorageObject<E> {
-        self
-    }
-}
-
 impl<'a, E, T> AsStorage<E> for &'a T
 where
     E: Entity,
-    T: AsStorage<E>,
+    T: AsStorage<E> + ?Sized,
 {
     fn as_storage(&self) -> &StorageObject<E> {
         <T as AsStorage<E>>::as_storage(self)
@@ -171,7 +151,7 @@ where
 impl<'a, E, T> AsStorage<E> for &'a mut T
 where
     E: Entity,
-    T: AsStorage<E>,
+    T: AsStorage<E> + ?Sized,
 {
     fn as_storage(&self) -> &StorageObject<E> {
         <T as AsStorage<E>>::as_storage(self)
@@ -185,30 +165,10 @@ where
     fn as_storage_mut(&mut self) -> &mut StorageObject<E>;
 }
 
-impl<E> AsStorageMut<E> for dyn ExtrinsicStorage<E>
-where
-    E: Entity,
-    E::Storage: Dispatch<E, Object = dyn ExtrinsicStorage<E>>,
-{
-    fn as_storage_mut(&mut self) -> &mut StorageObject<E> {
-        self
-    }
-}
-
-impl<E> AsStorageMut<E> for dyn IntrinsicStorage<E>
-where
-    E: Entity,
-    E::Storage: Dispatch<E, Object = dyn IntrinsicStorage<E>>,
-{
-    fn as_storage_mut(&mut self) -> &mut StorageObject<E> {
-        self
-    }
-}
-
 impl<'a, E, T> AsStorageMut<E> for &'a mut T
 where
     E: Entity,
-    T: AsStorageMut<E>,
+    T: AsStorageMut<E> + ?Sized,
 {
     fn as_storage_mut(&mut self) -> &mut StorageObject<E> {
         <T as AsStorageMut<E>>::as_storage_mut(self)

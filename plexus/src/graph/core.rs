@@ -18,19 +18,12 @@ pub type OwnedCore<G> = Core<
 
 /// A complete and ephemeral core with immutable references to all of its
 /// storage.
-//pub type RefCore<'a, G> = Core<
-//    G,
-//    &'a StorageObject<Vertex<G>>,
-//    &'a StorageObject<Arc<G>>,
-//    &'a StorageObject<Edge<G>>,
-//    &'a StorageObject<Face<G>>,
-//>;
 pub type RefCore<'a, G> = Core<
     G,
-    &'a <Vertex<G> as Entity>::Storage,
-    &'a <Arc<G> as Entity>::Storage,
-    &'a <Edge<G> as Entity>::Storage,
-    &'a <Face<G> as Entity>::Storage,
+    &'a StorageObject<Vertex<G>>,
+    &'a StorageObject<Arc<G>>,
+    &'a StorageObject<Edge<G>>,
+    &'a StorageObject<Face<G>>,
 >;
 
 /// Adaptable graph representation that can incorporate arbitrary storage.

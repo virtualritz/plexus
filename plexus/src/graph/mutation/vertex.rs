@@ -1,5 +1,5 @@
 use crate::entity::borrow::Reborrow;
-use crate::entity::storage::{AsStorage, AsStorageMut, Fuse, Get, Insert, StorageObject};
+use crate::entity::storage::{AsStorage, AsStorageMut, Fuse, StorageObject};
 use crate::entity::Entity;
 use crate::graph::core::Core;
 use crate::graph::data::{Data, GraphData, Parametric};
@@ -11,8 +11,7 @@ use crate::graph::GraphError;
 use crate::transact::Transact;
 
 type OwnedCore<G> = Core<G, <Vertex<G> as Entity>::Storage, (), (), ()>;
-//type RefCore<'a, G> = Core<G, &'a StorageObject<Vertex<G>>, (), (), ()>;
-type RefCore<'a, G> = Core<G, &'a <Vertex<G> as Entity>::Storage, (), (), ()>;
+type RefCore<'a, G> = Core<G, &'a StorageObject<Vertex<G>>, (), (), ()>;
 
 pub struct VertexMutation<M>
 where
@@ -28,7 +27,7 @@ where
     G: GraphData,
 {
     pub fn to_ref_core(&self) -> RefCore<G> {
-        Core::empty().fuse(&self.storage)
+        Core::empty().fuse(self.storage.as_storage())
     }
 
     pub fn connect_outgoing_arc(&mut self, a: VertexKey, ab: ArcKey) -> Result<(), GraphError> {

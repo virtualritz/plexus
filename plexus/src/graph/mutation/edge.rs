@@ -2,9 +2,7 @@ use fool::and;
 use std::ops::{Deref, DerefMut};
 
 use crate::entity::borrow::Reborrow;
-use crate::entity::storage::{
-    AsStorage, AsStorageMut, Fuse, Get, Insert, InsertWithKey, Remove, StorageObject,
-};
+use crate::entity::storage::{AsStorage, AsStorageMut, Fuse, StorageObject};
 use crate::entity::view::{Bind, ClosedView, Rebind};
 use crate::entity::Entity;
 use crate::graph::core::Core;
@@ -29,18 +27,11 @@ type OwnedCore<G> = Core<
     <Edge<G> as Entity>::Storage,
     (),
 >;
-//type RefCore<'a, G> = Core<
-//    G,
-//    &'a StorageObject<Vertex<G>>,
-//    &'a StorageObject<Arc<G>>,
-//    &'a StorageObject<Edge<G>>,
-//    (),
-//>;
 type RefCore<'a, G> = Core<
     G,
-    &'a <Vertex<G> as Entity>::Storage,
-    &'a <Arc<G> as Entity>::Storage,
-    &'a <Edge<G> as Entity>::Storage,
+    &'a StorageObject<Vertex<G>>,
+    &'a StorageObject<Arc<G>>,
+    &'a StorageObject<Edge<G>>,
     (),
 >;
 
@@ -66,8 +57,8 @@ where
     pub fn to_ref_core(&self) -> RefCore<G> {
         self.inner
             .to_ref_core()
-            .fuse(&self.storage.0)
-            .fuse(&self.storage.1)
+            .fuse(self.storage.0.as_storage())
+            .fuse(self.storage.1.as_storage())
     }
 
     pub fn connect_adjacent_arcs(&mut self, ab: ArcKey, bc: ArcKey) -> Result<(), GraphError> {
