@@ -138,6 +138,26 @@ where
     fn as_storage(&self) -> &StorageObject<E>;
 }
 
+impl<E> AsStorage<E> for dyn ExtrinsicStorage<E>
+where
+    E: Entity,
+    E::Storage: Dispatch<E, Object = dyn ExtrinsicStorage<E>>,
+{
+    fn as_storage(&self) -> &StorageObject<E> {
+        self
+    }
+}
+
+impl<E> AsStorage<E> for dyn IntrinsicStorage<E>
+where
+    E: Entity,
+    E::Storage: Dispatch<E, Object = dyn IntrinsicStorage<E>>,
+{
+    fn as_storage(&self) -> &StorageObject<E> {
+        self
+    }
+}
+
 impl<'a, E, T> AsStorage<E> for &'a T
 where
     E: Entity,
@@ -163,6 +183,26 @@ where
     E: Entity,
 {
     fn as_storage_mut(&mut self) -> &mut StorageObject<E>;
+}
+
+impl<E> AsStorageMut<E> for dyn ExtrinsicStorage<E>
+where
+    E: Entity,
+    E::Storage: Dispatch<E, Object = dyn ExtrinsicStorage<E>>,
+{
+    fn as_storage_mut(&mut self) -> &mut StorageObject<E> {
+        self
+    }
+}
+
+impl<E> AsStorageMut<E> for dyn IntrinsicStorage<E>
+where
+    E: Entity,
+    E::Storage: Dispatch<E, Object = dyn IntrinsicStorage<E>>,
+{
+    fn as_storage_mut(&mut self) -> &mut StorageObject<E> {
+        self
+    }
 }
 
 impl<'a, E, T> AsStorageMut<E> for &'a mut T

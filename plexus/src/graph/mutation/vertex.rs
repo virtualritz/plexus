@@ -1,5 +1,5 @@
 use crate::entity::borrow::Reborrow;
-use crate::entity::storage::{AsStorage, Fuse, Get, Insert, StorageObject};
+use crate::entity::storage::{AsStorage, AsStorageMut, Fuse, Get, Insert, StorageObject};
 use crate::entity::Entity;
 use crate::graph::core::Core;
 use crate::graph::data::{Data, GraphData, Parametric};
@@ -11,7 +11,8 @@ use crate::graph::GraphError;
 use crate::transact::Transact;
 
 type OwnedCore<G> = Core<G, <Vertex<G> as Entity>::Storage, (), (), ()>;
-type RefCore<'a, G> = Core<G, &'a StorageObject<Vertex<G>>, (), (), ()>;
+//type RefCore<'a, G> = Core<G, &'a StorageObject<Vertex<G>>, (), (), ()>;
+type RefCore<'a, G> = Core<G, &'a <Vertex<G> as Entity>::Storage, (), (), ()>;
 
 pub struct VertexMutation<M>
 where
@@ -46,6 +47,7 @@ where
     {
         let vertex = self
             .storage
+            .as_storage_mut()
             .get_mut(&a)
             .ok_or_else(|| GraphError::TopologyNotFound)?;
         Ok(f(vertex))
@@ -115,7 +117,11 @@ where
     N: AsMut<Mutation<M>>,
     M: Mutable,
 {
-    mutation.as_mut().storage.insert(Vertex::new(geometry))
+    mutation
+        .as_mut()
+        .storage
+        .as_storage_mut()
+        .insert(Vertex::new(geometry))
 }
 
 pub fn remove<M, N>(
