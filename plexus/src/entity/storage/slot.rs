@@ -12,7 +12,7 @@ pub type SlotEntityMap<E> = HopSlotMap<InnerKey<<E as Entity>::Key>, E>;
 
 impl<E, K> AsStorage<E> for HopSlotMap<InnerKey<K>, E>
 where
-    E: 'static + Entity<Key = K, Storage = Self>,
+    E: Entity<Key = K, Storage = Self>,
     K: Key,
     InnerKey<K>: 'static + SlotKey,
 {
@@ -23,7 +23,7 @@ where
 
 impl<E, K> AsStorageMut<E> for HopSlotMap<InnerKey<K>, E>
 where
-    E: 'static + Entity<Key = K, Storage = Self>,
+    E: Entity<Key = K, Storage = Self>,
     K: Key,
     InnerKey<K>: 'static + SlotKey,
 {
@@ -32,7 +32,7 @@ where
     }
 }
 
-#[cfg(not(nightly))]
+#[cfg(not(all(nightly, feature = "unstable")))]
 impl<E, K> Dispatch<E> for HopSlotMap<InnerKey<K>, E>
 where
     E: Entity<Key = K, Storage = Self>,
@@ -42,7 +42,7 @@ where
     type Object = dyn 'static + IntrinsicStorage<E>;
 }
 
-#[cfg(nightly)]
+#[cfg(all(nightly, feature = "unstable"))]
 #[rustfmt::skip]
 impl<E, K> Dispatch<E> for HopSlotMap<InnerKey<K>, E>
 where

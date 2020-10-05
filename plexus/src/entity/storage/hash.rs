@@ -35,7 +35,7 @@ where
     }
 }
 
-#[cfg(not(nightly))]
+#[cfg(not(all(nightly, feature = "unstable")))]
 impl<E, K, H> Dispatch<E> for HashMap<InnerKey<K>, E, H>
 where
     E: Entity<Key = K, Storage = Self>,
@@ -46,7 +46,7 @@ where
     type Object = dyn 'static + ExtrinsicStorage<E>;
 }
 
-#[cfg(nightly)]
+#[cfg(all(nightly, feature = "unstable"))]
 #[rustfmt::skip]
 impl<E, K, H> Dispatch<E> for HashMap<InnerKey<K>, E, H>
 where

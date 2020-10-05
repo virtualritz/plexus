@@ -11,9 +11,9 @@ use crate::graph::GraphError;
 use crate::transact::Transact;
 
 type OwnedCore<G> = Core<G, <Vertex<G> as Entity>::Storage, (), (), ()>;
-#[cfg(not(nightly))]
+#[cfg(not(all(nightly, feature = "unstable")))]
 type RefCore<'a, G> = Core<G, &'a StorageObject<Vertex<G>>, (), (), ()>;
-#[cfg(nightly)]
+#[cfg(all(nightly, feature = "unstable"))]
 type RefCore<'a, G> = Core<G, &'a StorageObject<'a, Vertex<G>>, (), (), ()>;
 
 pub struct VertexMutation<M>

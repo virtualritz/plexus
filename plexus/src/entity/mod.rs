@@ -16,14 +16,19 @@ pub enum EntityError {
     Geometry,
 }
 
-#[cfg(not(nightly))]
-pub trait Entity: 'static + Copy + Sized {
-    type Key: Key;
-    type Storage: Default + Dispatch<Self> + Storage<Self> + Unjournaled;
-}
+#[cfg(not(all(nightly, feature = "unstable")))]
+pub trait Lifetime: 'static {}
 
-#[cfg(nightly)]
-pub trait Entity: Copy + Sized {
+#[cfg(not(all(nightly, feature = "unstable")))]
+impl<T> Lifetime for T where T: 'static {}
+
+#[cfg(all(nightly, feature = "unstable"))]
+pub trait Lifetime {}
+
+#[cfg(all(nightly, feature = "unstable"))]
+impl<T> Lifetime for T {}
+
+pub trait Entity: Copy + Lifetime + Sized {
     type Key: Key;
     type Storage: Default + Dispatch<Self> + Storage<Self> + Unjournaled;
 }

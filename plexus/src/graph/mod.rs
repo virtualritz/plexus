@@ -293,7 +293,7 @@ use crate::transact::Transact;
 use crate::{DynamicArity, MeshArity, StaticArity};
 
 pub use crate::entity::view::{ClosedView, Rebind};
-pub use crate::graph::data::GraphData;
+pub use crate::graph::data::{EntityData, GraphData};
 pub use crate::graph::edge::{
     Arc, ArcKey, ArcOrphan, ArcView, Edge, EdgeKey, EdgeOrphan, EdgeView, ToArc,
 };

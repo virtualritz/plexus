@@ -27,7 +27,7 @@ type OwnedCore<G> = Core<
     <Edge<G> as Entity>::Storage,
     (),
 >;
-#[cfg(not(nightly))]
+#[cfg(not(all(nightly, feature = "unstable")))]
 type RefCore<'a, G> = Core<
     G,
     &'a StorageObject<Vertex<G>>,
@@ -35,7 +35,7 @@ type RefCore<'a, G> = Core<
     &'a StorageObject<Edge<G>>,
     (),
 >;
-#[cfg(nightly)]
+#[cfg(all(nightly, feature = "unstable"))]
 type RefCore<'a, G> = Core<
     G,
     &'a StorageObject<'a, Vertex<G>>,

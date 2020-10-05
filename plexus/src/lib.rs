@@ -8,7 +8,7 @@
 
 // TODO: Remove build script and use GATs on stable when available. See
 //       https://github.com/rust-lang/rust/issues/44265
-#![cfg_attr(nightly, feature(generic_associated_types))]
+#![cfg_attr(all(nightly, feature = "unstable"), feature(generic_associated_types))]
 // This lint is a bit subjective. Using `next` is equivalent, but the Plexus
 // authors find `nth(0)` more clear, especially as part of a non-trivial
 // iterator expression. This may be revisited though.
