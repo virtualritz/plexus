@@ -11,37 +11,51 @@ use crate::entity::Entity;
 
 pub type FnvEntityMap<E> = HashMap<InnerKey<<E as Entity>::Key>, E, FnvBuildHasher>;
 
-impl<E, H> AsStorage<E> for HashMap<InnerKey<E::Key>, E, H>
+impl<E, K, H> AsStorage<E> for HashMap<InnerKey<K>, E, H>
 where
-    E: 'static + Entity,
-    E::Storage: Dispatch<E, Object = dyn ExtrinsicStorage<E>>,
+    E: Entity<Key = K, Storage = Self>,
+    K: Key,
     H: 'static + BuildHasher + Default,
-    InnerKey<E::Key>: Eq + Hash,
+    InnerKey<K>: 'static + Eq + Hash,
 {
     fn as_storage(&self) -> &StorageObject<E> {
         self
     }
 }
 
-impl<E, H> AsStorageMut<E> for HashMap<InnerKey<E::Key>, E, H>
+impl<E, K, H> AsStorageMut<E> for HashMap<InnerKey<K>, E, H>
 where
-    E: 'static + Entity,
-    E::Storage: Dispatch<E, Object = dyn ExtrinsicStorage<E>>,
+    E: Entity<Key = K, Storage = Self>,
+    K: Key,
     H: 'static + BuildHasher + Default,
-    InnerKey<E::Key>: Eq + Hash,
+    InnerKey<K>: 'static + Eq + Hash,
 {
     fn as_storage_mut(&mut self) -> &mut StorageObject<E> {
         self
     }
 }
 
-impl<E, H> Dispatch<E> for HashMap<InnerKey<E::Key>, E, H>
+#[cfg(not(nightly))]
+impl<E, K, H> Dispatch<E> for HashMap<InnerKey<K>, E, H>
 where
-    E: Entity,
-    H: BuildHasher + Default,
-    InnerKey<E::Key>: Eq + Hash,
+    E: Entity<Key = K, Storage = Self>,
+    K: Key,
+    H: 'static + BuildHasher + Default,
+    InnerKey<K>: 'static + Eq + Hash,
 {
-    type Object = dyn ExtrinsicStorage<E>;
+    type Object = dyn 'static + ExtrinsicStorage<E>;
+}
+
+#[cfg(nightly)]
+#[rustfmt::skip]
+impl<E, K, H> Dispatch<E> for HashMap<InnerKey<K>, E, H>
+where
+    E: Entity<Key = K, Storage = Self>,
+    K: Key,
+    H: 'static + BuildHasher + Default,
+    InnerKey<K>: 'static + Eq + Hash,
+{
+    type Object<'a> where E: 'a = dyn 'a + ExtrinsicStorage<E>;
 }
 
 impl<E, H> Get<E> for HashMap<InnerKey<E::Key>, E, H>

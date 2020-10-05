@@ -16,6 +16,13 @@ pub enum EntityError {
     Geometry,
 }
 
+#[cfg(not(nightly))]
+pub trait Entity: 'static + Copy + Sized {
+    type Key: Key;
+    type Storage: Default + Dispatch<Self> + Storage<Self> + Unjournaled;
+}
+
+#[cfg(nightly)]
 pub trait Entity: Copy + Sized {
     type Key: Key;
     type Storage: Default + Dispatch<Self> + Storage<Self> + Unjournaled;

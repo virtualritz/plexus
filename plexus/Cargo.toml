@@ -23,8 +23,8 @@ categories = [
 ]
 
 [package.metadata.docs.rs]
-# Enable all featues so that trait implementations for types from commonly used
-# linear algebra crates are shown.
+# Enable integration featues so that trait implementations for types from
+# commonly used linear algebra crates are shown.
 all-features = true
 # Enable KaTeX support.
 rustdoc-args = [
@@ -69,6 +69,9 @@ features = ["zip"]
 git = "https://github.com/olson-sean-k/theon.git"
 rev = "789eb62"
 default-features = false
+
+[build-dependencies]
+rustversion = "^1.0.3"
 
 [dev-dependencies]
 # For brevity and simplicity, tests (and documentation comments) use a direct

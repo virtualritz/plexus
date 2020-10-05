@@ -10,34 +10,47 @@ use crate::entity::Entity;
 
 pub type SlotEntityMap<E> = HopSlotMap<InnerKey<<E as Entity>::Key>, E>;
 
-impl<E> AsStorage<E> for HopSlotMap<InnerKey<E::Key>, E>
+impl<E, K> AsStorage<E> for HopSlotMap<InnerKey<K>, E>
 where
-    E: 'static + Entity,
-    E::Storage: Dispatch<E, Object = dyn IntrinsicStorage<E>>,
-    InnerKey<E::Key>: SlotKey,
+    E: 'static + Entity<Key = K, Storage = Self>,
+    K: Key,
+    InnerKey<K>: 'static + SlotKey,
 {
     fn as_storage(&self) -> &StorageObject<E> {
         self
     }
 }
 
-impl<E> AsStorageMut<E> for HopSlotMap<InnerKey<E::Key>, E>
+impl<E, K> AsStorageMut<E> for HopSlotMap<InnerKey<K>, E>
 where
-    E: 'static + Entity,
-    E::Storage: Dispatch<E, Object = dyn IntrinsicStorage<E>>,
-    InnerKey<E::Key>: SlotKey,
+    E: 'static + Entity<Key = K, Storage = Self>,
+    K: Key,
+    InnerKey<K>: 'static + SlotKey,
 {
     fn as_storage_mut(&mut self) -> &mut StorageObject<E> {
         self
     }
 }
 
-impl<E> Dispatch<E> for HopSlotMap<InnerKey<E::Key>, E>
+#[cfg(not(nightly))]
+impl<E, K> Dispatch<E> for HopSlotMap<InnerKey<K>, E>
 where
-    E: Entity,
-    InnerKey<E::Key>: SlotKey,
+    E: Entity<Key = K, Storage = Self>,
+    K: Key,
+    InnerKey<K>: 'static + SlotKey,
 {
-    type Object = dyn IntrinsicStorage<E>;
+    type Object = dyn 'static + IntrinsicStorage<E>;
+}
+
+#[cfg(nightly)]
+#[rustfmt::skip]
+impl<E, K> Dispatch<E> for HopSlotMap<InnerKey<K>, E>
+where
+    E: Entity<Key = K, Storage = Self>,
+    K: Key,
+    InnerKey<K>: 'static + SlotKey,
+{
+    type Object<'a> where E: 'a = dyn 'a + IntrinsicStorage<E>;
 }
 
 impl<E> Get<E> for HopSlotMap<InnerKey<E::Key>, E>

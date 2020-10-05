@@ -27,11 +27,20 @@ type OwnedCore<G> = Core<
     <Edge<G> as Entity>::Storage,
     (),
 >;
+#[cfg(not(nightly))]
 type RefCore<'a, G> = Core<
     G,
     &'a StorageObject<Vertex<G>>,
     &'a StorageObject<Arc<G>>,
     &'a StorageObject<Edge<G>>,
+    (),
+>;
+#[cfg(nightly)]
+type RefCore<'a, G> = Core<
+    G,
+    &'a StorageObject<'a, Vertex<G>>,
+    &'a StorageObject<'a, Arc<G>>,
+    &'a StorageObject<'a, Edge<G>>,
     (),
 >;
 

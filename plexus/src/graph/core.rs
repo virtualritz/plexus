@@ -18,12 +18,24 @@ pub type OwnedCore<G> = Core<
 
 /// A complete and ephemeral core with immutable references to all of its
 /// storage.
+#[cfg(not(nightly))]
 pub type RefCore<'a, G> = Core<
     G,
     &'a StorageObject<Vertex<G>>,
     &'a StorageObject<Arc<G>>,
     &'a StorageObject<Edge<G>>,
     &'a StorageObject<Face<G>>,
+>;
+
+/// A complete and ephemeral core with immutable references to all of its
+/// storage.
+#[cfg(nightly)]
+pub type RefCore<'a, G> = Core<
+    G,
+    &'a StorageObject<'a, Vertex<G>>,
+    &'a StorageObject<'a, Arc<G>>,
+    &'a StorageObject<'a, Edge<G>>,
+    &'a StorageObject<'a, Face<G>>,
 >;
 
 /// Adaptable graph representation that can incorporate arbitrary storage.
@@ -269,14 +281,25 @@ where
     type Data = G;
 }
 
+#[cfg(not(nightly))]
 impl<G, V, A, E, F> GraphData for Core<G, V, A, E, F>
 where
     G: GraphData,
-    // TODO: Remove these bounds.
     V: 'static,
     A: 'static,
     E: 'static,
     F: 'static,
+{
+    type Vertex = G::Vertex;
+    type Arc = G::Arc;
+    type Edge = G::Edge;
+    type Face = G::Face;
+}
+
+#[cfg(nightly)]
+impl<G, V, A, E, F> GraphData for Core<G, V, A, E, F>
+where
+    G: GraphData,
 {
     type Vertex = G::Vertex;
     type Arc = G::Arc;

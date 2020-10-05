@@ -13,7 +13,10 @@ pub use crate::entity::storage::hash::FnvEntityMap;
 pub use crate::entity::storage::journal::Unjournaled;
 pub use crate::entity::storage::slot::SlotEntityMap;
 
+#[cfg(not(nightly))]
 pub type StorageObject<E> = <<E as Entity>::Storage as Dispatch<E>>::Object;
+#[cfg(nightly)]
+pub type StorageObject<'a, E> = <<E as Entity>::Storage as Dispatch<E>>::Object<'a>;
 
 pub type Rekeying<E> = HashMap<<E as Entity>::Key, <E as Entity>::Key, FnvBuildHasher>;
 pub type InnerKey<K> = <K as Key>::Inner;
@@ -26,11 +29,23 @@ pub trait Key: Copy + Eq + Hash + Sized {
     fn into_inner(self) -> Self::Inner;
 }
 
+#[cfg(not(nightly))]
 pub trait Dispatch<E>
 where
     E: Entity,
 {
     type Object: ?Sized + Storage<E>;
+}
+
+#[cfg(nightly)]
+#[rustfmt::skip]
+pub trait Dispatch<E>
+where
+    E: Entity,
+{
+    type Object<'a>: 'a + ?Sized + Storage<E>
+    where
+        E: 'a;
 }
 
 pub trait Get<E>
@@ -67,8 +82,7 @@ where
     fn remove(&mut self, key: &E::Key) -> Option<E>;
 }
 
-// TODO: Avoid boxing when GATs are stabilized. See
-//       https://github.com/rust-lang/rust/issues/44265
+// TODO: Provide a GATs implementation for the `gats` feature.
 pub trait Sequence<E>
 where
     E: Entity,
