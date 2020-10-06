@@ -1,6 +1,7 @@
 use std::hash::Hash;
 
 use crate::entity::storage::hash::FnvEntityMap;
+use crate::entity::storage::slot::{SlotEntityMap, SlotKey};
 use crate::entity::storage::{
     AsStorage, AsStorageMut, Dispatch, Get, Insert, InsertWithKey, Key, Remove, Sequence, Storage,
     StorageObject,
@@ -15,7 +16,6 @@ where
 {
     Insert(E::Key, E),
     Remove(E::Key),
-    // NOTE: This will probably be the most abundant mutation in the log.
     Write(E::Key, E),
 }
 
@@ -27,18 +27,21 @@ where
     mutations: Vec<Mutation<E>>,
 }
 
+// TODO: The type parameter `T` is only used to implement `AsStorage`. Is there
+//       a way to write a generic implementation that also allows for an
+//       implicit conversion from `&Journaled<_, _>` to a storage object?
 #[derive(Default)]
-pub struct Journaled<E>
+pub struct Journaled<T, E>
 where
-    E: Entity,
+    T: Default + Dispatch<E> + Storage<E> + Unjournaled,
+    E: Entity<Storage = T>,
 {
-    storage: E::Storage,
+    storage: T,
     log: Log<E>,
 }
 
-// TODO: Is it possible to parameterize on entity storage instead of using
-//       bespoke implementations for each storage type?
-impl<E, K> AsStorage<E> for Journaled<E>
+// TODO: Is a general implementation possible? See `Journaled`.
+impl<E, K> AsStorage<E> for Journaled<FnvEntityMap<E>, E>
 where
     E: Entity<Key = K, Storage = FnvEntityMap<E>>,
     K: Key,
@@ -51,7 +54,21 @@ where
     }
 }
 
-impl<E, K> AsStorageMut<E> for Journaled<E>
+// TODO: Is a general implementation possible? See `Journaled`.
+impl<E, K> AsStorage<E> for Journaled<SlotEntityMap<E>, E>
+where
+    E: Entity<Key = K, Storage = SlotEntityMap<E>>,
+    K: Key,
+    K::Inner: 'static + SlotKey,
+{
+    fn as_storage(&self) -> &StorageObject<E> {
+        // It is essential that this returns `self` and does NOT simply forward
+        // to the `storage` field.
+        self
+    }
+}
+
+impl<E, K> AsStorageMut<E> for Journaled<FnvEntityMap<E>, E>
 where
     E: Entity<Key = K, Storage = FnvEntityMap<E>>,
     K: Key,
@@ -64,26 +81,42 @@ where
     }
 }
 
-#[cfg(not(all(nightly, feature = "unstable")))]
-impl<E> Dispatch<E> for Journaled<E>
+impl<E, K> AsStorageMut<E> for Journaled<SlotEntityMap<E>, E>
 where
-    E: Entity,
+    E: Entity<Key = K, Storage = SlotEntityMap<E>>,
+    K: Key,
+    K::Inner: 'static + SlotKey,
+{
+    fn as_storage_mut(&mut self) -> &mut StorageObject<E> {
+        // It is essential that this returns `self` and does NOT simply forward
+        // to the `storage` field.
+        self
+    }
+}
+
+#[cfg(not(all(nightly, feature = "unstable")))]
+impl<T, E> Dispatch<E> for Journaled<T, E>
+where
+    T: Default + Dispatch<E> + Storage<E> + Unjournaled,
+    E: Entity<Storage = T>,
 {
     type Object = StorageObject<E>;
 }
 
 #[cfg(all(nightly, feature = "unstable"))]
 #[rustfmt::skip]
-impl<E> Dispatch<E> for Journaled<E>
+impl<T, E> Dispatch<E> for Journaled<T, E>
 where
-    E: Entity,
+    T: Default + Dispatch<E> + Storage<E> + Unjournaled,
+    E: Entity<Storage = T>,
 {
     type Object<'a> where E: 'a = StorageObject<'a, E>;
 }
 
-impl<E> Get<E> for Journaled<E>
+impl<T, E> Get<E> for Journaled<T, E>
 where
-    E: Entity,
+    T: Default + Dispatch<E> + Storage<E> + Unjournaled,
+    E: Entity<Storage = T>,
 {
     fn get(&self, key: &E::Key) -> Option<&E> {
         self.storage.get(key)
@@ -94,38 +127,40 @@ where
     }
 }
 
-impl<E> Insert<E> for Journaled<E>
+impl<T, E> Insert<E> for Journaled<T, E>
 where
-    E: Entity,
-    E::Storage: Insert<E>,
+    T: Default + Dispatch<E> + Insert<E> + Storage<E> + Unjournaled,
+    E: Entity<Storage = T>,
 {
     fn insert(&mut self, entity: E) -> E::Key {
         self.storage.insert(entity)
     }
 }
 
-impl<E> InsertWithKey<E> for Journaled<E>
+impl<T, E> InsertWithKey<E> for Journaled<T, E>
 where
-    E: Entity,
-    E::Storage: InsertWithKey<E>,
+    T: Default + Dispatch<E> + InsertWithKey<E> + Storage<E> + Unjournaled,
+    E: Entity<Storage = T>,
 {
     fn insert_with_key(&mut self, key: &E::Key, entity: E) -> Option<E> {
         self.storage.insert_with_key(key, entity)
     }
 }
 
-impl<E> Remove<E> for Journaled<E>
+impl<T, E> Remove<E> for Journaled<T, E>
 where
-    E: Entity,
+    T: Default + Dispatch<E> + Storage<E> + Unjournaled,
+    E: Entity<Storage = T>,
 {
     fn remove(&mut self, key: &E::Key) -> Option<E> {
         self.storage.remove(key)
     }
 }
 
-impl<E> Sequence<E> for Journaled<E>
+impl<T, E> Sequence<E> for Journaled<T, E>
 where
-    E: Entity,
+    T: Default + Dispatch<E> + Storage<E> + Unjournaled,
+    E: Entity<Storage = T>,
 {
     fn len(&self) -> usize {
         self.storage.len()

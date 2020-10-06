@@ -1,5 +1,4 @@
 use slotmap::hop::HopSlotMap;
-use slotmap::Key as SlotKey;
 
 use crate::entity::storage::journal::Unjournaled;
 use crate::entity::storage::{
@@ -7,6 +6,8 @@ use crate::entity::storage::{
     Sequence, StorageObject,
 };
 use crate::entity::Entity;
+
+pub use slotmap::Key as SlotKey;
 
 pub type SlotEntityMap<E> = HopSlotMap<InnerKey<<E as Entity>::Key>, E>;
 
