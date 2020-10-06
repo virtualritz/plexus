@@ -82,7 +82,7 @@ where
     fn remove(&mut self, key: &E::Key) -> Option<E>;
 }
 
-// TODO: Provide a GATs implementation for the `gats` feature.
+// TODO: Provide a GATs implementation for the `unstable` feature.
 pub trait Sequence<E>
 where
     E: Entity,

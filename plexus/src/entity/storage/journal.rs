@@ -1,1 +1,148 @@
+use std::hash::Hash;
+
+use crate::entity::storage::hash::FnvEntityMap;
+use crate::entity::storage::{
+    AsStorage, AsStorageMut, Dispatch, Get, Insert, InsertWithKey, Key, Remove, Sequence, Storage,
+    StorageObject,
+};
+use crate::entity::Entity;
+
 pub trait Unjournaled {}
+
+enum Mutation<E>
+where
+    E: Entity,
+{
+    Insert(E::Key, E),
+    Remove(E::Key),
+    // NOTE: This will probably be the most abundant mutation in the log.
+    Write(E::Key, E),
+}
+
+#[derive(Default)]
+struct Log<E>
+where
+    E: Entity,
+{
+    mutations: Vec<Mutation<E>>,
+}
+
+pub struct Journaled<T>
+where
+    T: Unjournaled,
+{
+    storage: T,
+}
+
+// TODO: Is it possible to parameterize on entity storage instead of using
+//       bespoke implementations for each storage type?
+impl<E, K> AsStorage<E> for Journaled<FnvEntityMap<E>>
+where
+    E: Entity<Key = K, Storage = FnvEntityMap<E>>,
+    K: Key,
+    K::Inner: 'static + Eq + Hash,
+{
+    fn as_storage(&self) -> &StorageObject<E> {
+        // It is essential that this returns `self` and does NOT simply forward
+        // to the `storage` field.
+        self
+    }
+}
+
+impl<E, K> AsStorageMut<E> for Journaled<FnvEntityMap<E>>
+where
+    E: Entity<Key = K, Storage = FnvEntityMap<E>>,
+    K: Key,
+    K::Inner: 'static + Eq + Hash,
+{
+    fn as_storage_mut(&mut self) -> &mut StorageObject<E> {
+        // It is essential that this returns `self` and does NOT simply forward
+        // to the `storage` field.
+        self
+    }
+}
+
+impl<T> Default for Journaled<T>
+where
+    T: Default + Unjournaled,
+{
+    fn default() -> Self {
+        Journaled {
+            storage: Default::default(),
+        }
+    }
+}
+
+impl<T, E> Dispatch<E> for Journaled<T>
+where
+    T: Dispatch<E> + Unjournaled,
+    E: Entity,
+{
+    type Object = T::Object;
+}
+
+impl<T, E> Get<E> for Journaled<T>
+where
+    T: Get<E> + Unjournaled,
+    E: Entity,
+{
+    fn get(&self, key: &E::Key) -> Option<&E> {
+        self.storage.get(key)
+    }
+
+    fn get_mut(&mut self, key: &E::Key) -> Option<&mut E> {
+        self.storage.get_mut(key)
+    }
+}
+
+impl<T, E> Insert<E> for Journaled<T>
+where
+    T: Insert<E> + Unjournaled,
+    E: Entity,
+{
+    fn insert(&mut self, entity: E) -> E::Key {
+        self.storage.insert(entity)
+    }
+}
+
+impl<T, E> InsertWithKey<E> for Journaled<T>
+where
+    T: InsertWithKey<E> + Unjournaled,
+    E: Entity,
+{
+    fn insert_with_key(&mut self, key: &E::Key, entity: E) -> Option<E> {
+        self.storage.insert_with_key(key, entity)
+    }
+}
+
+impl<T, E> Remove<E> for Journaled<T>
+where
+    T: Remove<E> + Unjournaled,
+    E: Entity,
+{
+    fn remove(&mut self, key: &E::Key) -> Option<E> {
+        self.storage.remove(key)
+    }
+}
+
+impl<T, E> Sequence<E> for Journaled<T>
+where
+    T: Sequence<E> + Unjournaled,
+    E: Entity,
+{
+    fn len(&self) -> usize {
+        self.storage.len()
+    }
+
+    fn iter<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &E)>> {
+        self.storage.iter()
+    }
+
+    fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &mut E)>> {
+        self.storage.iter_mut()
+    }
+
+    fn keys<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = E::Key>> {
+        self.storage.keys()
+    }
+}
