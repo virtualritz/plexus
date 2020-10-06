@@ -64,11 +64,21 @@ where
     }
 }
 
+#[cfg(not(all(nightly, feature = "unstable")))]
 impl<E> Dispatch<E> for Journaled<E>
 where
     E: Entity,
 {
     type Object = StorageObject<E>;
+}
+
+#[cfg(all(nightly, feature = "unstable"))]
+#[rustfmt::skip]
+impl<E> Dispatch<E> for Journaled<E>
+where
+    E: Entity,
+{
+    type Object<'a> where E: 'a = StorageObject<'a, E>;
 }
 
 impl<E> Get<E> for Journaled<E>
