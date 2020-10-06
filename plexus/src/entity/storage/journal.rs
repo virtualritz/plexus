@@ -27,16 +27,18 @@ where
     mutations: Vec<Mutation<E>>,
 }
 
-pub struct Journaled<T>
+#[derive(Default)]
+pub struct Journaled<E>
 where
-    T: Unjournaled,
+    E: Entity,
 {
-    storage: T,
+    storage: E::Storage,
+    log: Log<E>,
 }
 
 // TODO: Is it possible to parameterize on entity storage instead of using
 //       bespoke implementations for each storage type?
-impl<E, K> AsStorage<E> for Journaled<FnvEntityMap<E>>
+impl<E, K> AsStorage<E> for Journaled<E>
 where
     E: Entity<Key = K, Storage = FnvEntityMap<E>>,
     K: Key,
@@ -49,7 +51,7 @@ where
     }
 }
 
-impl<E, K> AsStorageMut<E> for Journaled<FnvEntityMap<E>>
+impl<E, K> AsStorageMut<E> for Journaled<E>
 where
     E: Entity<Key = K, Storage = FnvEntityMap<E>>,
     K: Key,
@@ -62,28 +64,15 @@ where
     }
 }
 
-impl<T> Default for Journaled<T>
+impl<E> Dispatch<E> for Journaled<E>
 where
-    T: Default + Unjournaled,
-{
-    fn default() -> Self {
-        Journaled {
-            storage: Default::default(),
-        }
-    }
-}
-
-impl<T, E> Dispatch<E> for Journaled<T>
-where
-    T: Dispatch<E> + Unjournaled,
     E: Entity,
 {
-    type Object = T::Object;
+    type Object = StorageObject<E>;
 }
 
-impl<T, E> Get<E> for Journaled<T>
+impl<E> Get<E> for Journaled<E>
 where
-    T: Get<E> + Unjournaled,
     E: Entity,
 {
     fn get(&self, key: &E::Key) -> Option<&E> {
@@ -95,29 +84,28 @@ where
     }
 }
 
-impl<T, E> Insert<E> for Journaled<T>
+impl<E> Insert<E> for Journaled<E>
 where
-    T: Insert<E> + Unjournaled,
     E: Entity,
+    E::Storage: Insert<E>,
 {
     fn insert(&mut self, entity: E) -> E::Key {
         self.storage.insert(entity)
     }
 }
 
-impl<T, E> InsertWithKey<E> for Journaled<T>
+impl<E> InsertWithKey<E> for Journaled<E>
 where
-    T: InsertWithKey<E> + Unjournaled,
     E: Entity,
+    E::Storage: InsertWithKey<E>,
 {
     fn insert_with_key(&mut self, key: &E::Key, entity: E) -> Option<E> {
         self.storage.insert_with_key(key, entity)
     }
 }
 
-impl<T, E> Remove<E> for Journaled<T>
+impl<E> Remove<E> for Journaled<E>
 where
-    T: Remove<E> + Unjournaled,
     E: Entity,
 {
     fn remove(&mut self, key: &E::Key) -> Option<E> {
@@ -125,9 +113,8 @@ where
     }
 }
 
-impl<T, E> Sequence<E> for Journaled<T>
+impl<E> Sequence<E> for Journaled<E>
 where
-    T: Sequence<E> + Unjournaled,
     E: Entity,
 {
     fn len(&self) -> usize {
