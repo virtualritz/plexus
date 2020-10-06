@@ -16,6 +16,8 @@ pub type OwnedCore<G> = Core<
     <Face<G> as Entity>::Storage,
 >;
 
+/// A complete and ephemeral core with immutable references to all of its
+/// storage.
 #[cfg(not(all(nightly, feature = "unstable")))]
 pub type RefCore<'a, G> = Core<
     G,
@@ -24,6 +26,9 @@ pub type RefCore<'a, G> = Core<
     &'a StorageObject<Edge<G>>,
     &'a StorageObject<Face<G>>,
 >;
+
+/// A complete and ephemeral core with immutable references to all of its
+/// storage.
 #[cfg(all(nightly, feature = "unstable"))]
 pub type RefCore<'a, G> = Core<
     G,
@@ -275,19 +280,3 @@ where
 {
     type Data = G;
 }
-
-// TODO: Is this necessary?
-//use crate::entity::Lifetime;
-//impl<G, V, A, E, F> GraphData for Core<G, V, A, E, F>
-//where
-//    G: GraphData,
-//    V: Lifetime,
-//    A: Lifetime,
-//    E: Lifetime,
-//    F: Lifetime,
-//{
-//    type Vertex = G::Vertex;
-//    type Arc = G::Arc;
-//    type Edge = G::Edge;
-//    type Face = G::Face;
-//}
