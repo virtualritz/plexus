@@ -82,6 +82,7 @@ where
     fn remove(&mut self, key: &E::Key) -> Option<E>;
 }
 
+// TODO: Rename this to `Enumerate`.
 // TODO: Provide a GATs implementation for the `unstable` feature.
 pub trait Sequence<E>
 where

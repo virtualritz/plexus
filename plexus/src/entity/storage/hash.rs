@@ -2,7 +2,7 @@ use fnv::FnvBuildHasher;
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
 
-use crate::entity::storage::journal::Unjournaled;
+use crate::entity::storage::journal::{JournalState, Unjournaled};
 use crate::entity::storage::{
     AsStorage, AsStorageMut, Dispatch, ExtrinsicStorage, Get, InnerKey, InsertWithKey, Key, Remove,
     Sequence, StorageObject,
@@ -82,6 +82,17 @@ where
     fn insert_with_key(&mut self, key: &E::Key, entity: E) -> Option<E> {
         self.insert(key.into_inner(), entity)
     }
+}
+
+impl<E, H> JournalState for HashMap<InnerKey<E::Key>, E, H>
+where
+    E: Entity,
+    H: BuildHasher + Default,
+    InnerKey<E::Key>: Eq + Hash,
+{
+    type State = ();
+
+    fn state(&self) -> Self::State {}
 }
 
 impl<E, H> Remove<E> for HashMap<InnerKey<E::Key>, E, H>

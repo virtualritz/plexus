@@ -1,6 +1,9 @@
 use slotmap::hop::HopSlotMap;
+use slotmap::KeyData;
+use std::mem;
+use std::num::NonZeroU32;
 
-use crate::entity::storage::journal::Unjournaled;
+use crate::entity::storage::journal::{JournalState, SyntheticKey, Unjournaled};
 use crate::entity::storage::{
     AsStorage, AsStorageMut, Dispatch, Get, InnerKey, Insert, IntrinsicStorage, Key, Remove,
     Sequence, StorageObject,
@@ -10,6 +13,29 @@ use crate::entity::Entity;
 pub use slotmap::Key as SlotKey;
 
 pub type SlotEntityMap<E> = HopSlotMap<InnerKey<<E as Entity>::Key>, E>;
+
+impl<K> SyntheticKey<u32> for K
+where
+    K: Key,
+    InnerKey<K>: SlotKey,
+{
+    fn synthesize(state: &mut u32) -> Self {
+        struct SyntheticKey {
+            _index: u32,
+            _version: NonZeroU32,
+        }
+
+        unsafe {
+            let key = SyntheticKey {
+                _index: *state,
+                _version: NonZeroU32::new_unchecked(u32::MAX - 1),
+            };
+            // TODO: This may overflow.
+            *state += 1;
+            Key::from_inner(mem::transmute::<_, KeyData>(key).into())
+        }
+    }
+}
 
 impl<E, K> AsStorage<E> for HopSlotMap<InnerKey<K>, E>
 where
@@ -75,6 +101,21 @@ where
 {
     fn insert(&mut self, entity: E) -> E::Key {
         E::Key::from_inner(self.insert(entity))
+    }
+}
+
+// TODO: Use more sophisticated state to avoid overflows and use 64 bits of the
+//       key rather than just the 32 bits of the index. See `SyntheticKey`.
+impl<E> JournalState for HopSlotMap<InnerKey<E::Key>, E>
+where
+    E: Entity,
+    InnerKey<E::Key>: SlotKey,
+{
+    type State = u32;
+
+    fn state(&self) -> Self::State {
+        // TODO: This may overflow.
+        (self.capacity() + 1) as u32
     }
 }
 
