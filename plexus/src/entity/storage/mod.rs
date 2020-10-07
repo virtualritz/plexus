@@ -48,6 +48,20 @@ where
         E: 'a;
 }
 
+// TODO: Provide a GATs implementation for the `unstable` feature.
+pub trait Enumerate<E>
+where
+    E: Entity,
+{
+    fn len(&self) -> usize;
+
+    fn iter<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &E)>>;
+
+    fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &mut E)>>;
+
+    fn keys<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = E::Key>>;
+}
+
 pub trait Get<E>
 where
     E: Entity,
@@ -82,22 +96,7 @@ where
     fn remove(&mut self, key: &E::Key) -> Option<E>;
 }
 
-// TODO: Rename this to `Enumerate`.
-// TODO: Provide a GATs implementation for the `unstable` feature.
-pub trait Sequence<E>
-where
-    E: Entity,
-{
-    fn len(&self) -> usize;
-
-    fn iter<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &E)>>;
-
-    fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &mut E)>>;
-
-    fn keys<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = E::Key>>;
-}
-
-pub trait Storage<E>: AsStorage<E> + AsStorageMut<E> + Get<E> + Remove<E> + Sequence<E>
+pub trait Storage<E>: AsStorage<E> + AsStorageMut<E> + Enumerate<E> + Get<E> + Remove<E>
 where
     E: Entity,
 {
@@ -105,7 +104,7 @@ where
 
 impl<T, E> Storage<E> for T
 where
-    T: AsStorage<E> + AsStorageMut<E> + Get<E> + Remove<E> + Sequence<E>,
+    T: AsStorage<E> + AsStorageMut<E> + Enumerate<E> + Get<E> + Remove<E>,
     E: Entity,
 {
 }

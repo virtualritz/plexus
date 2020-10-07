@@ -4,8 +4,8 @@ use std::hash::{BuildHasher, Hash};
 
 use crate::entity::storage::journal::{JournalState, Unjournaled};
 use crate::entity::storage::{
-    AsStorage, AsStorageMut, Dispatch, ExtrinsicStorage, Get, InnerKey, InsertWithKey, Key, Remove,
-    Sequence, StorageObject,
+    AsStorage, AsStorageMut, Dispatch, Enumerate, ExtrinsicStorage, Get, InnerKey, InsertWithKey,
+    Key, Remove, StorageObject,
 };
 use crate::entity::Entity;
 
@@ -58,6 +58,35 @@ where
     type Object<'a> where E: 'a = dyn 'a + ExtrinsicStorage<E>;
 }
 
+impl<E, H> Enumerate<E> for HashMap<InnerKey<E::Key>, E, H>
+where
+    E: Entity,
+    H: BuildHasher + Default,
+    InnerKey<E::Key>: Eq + Hash,
+{
+    fn len(&self) -> usize {
+        self.len()
+    }
+
+    fn iter<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &E)>> {
+        Box::new(
+            self.iter()
+                .map(|(key, entity)| (E::Key::from_inner(*key), entity)),
+        )
+    }
+
+    fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &mut E)>> {
+        Box::new(
+            self.iter_mut()
+                .map(|(key, entity)| (E::Key::from_inner(*key), entity)),
+        )
+    }
+
+    fn keys<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = E::Key>> {
+        Box::new(self.keys().map(|key| E::Key::from_inner(*key)))
+    }
+}
+
 impl<E, H> Get<E> for HashMap<InnerKey<E::Key>, E, H>
 where
     E: Entity,
@@ -103,35 +132,6 @@ where
 {
     fn remove(&mut self, key: &E::Key) -> Option<E> {
         self.remove(&key.into_inner())
-    }
-}
-
-impl<E, H> Sequence<E> for HashMap<InnerKey<E::Key>, E, H>
-where
-    E: Entity,
-    H: BuildHasher + Default,
-    InnerKey<E::Key>: Eq + Hash,
-{
-    fn len(&self) -> usize {
-        self.len()
-    }
-
-    fn iter<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &E)>> {
-        Box::new(
-            self.iter()
-                .map(|(key, entity)| (E::Key::from_inner(*key), entity)),
-        )
-    }
-
-    fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &mut E)>> {
-        Box::new(
-            self.iter_mut()
-                .map(|(key, entity)| (E::Key::from_inner(*key), entity)),
-        )
-    }
-
-    fn keys<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = E::Key>> {
-        Box::new(self.keys().map(|key| E::Key::from_inner(*key)))
     }
 }
 

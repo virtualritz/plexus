@@ -4,7 +4,7 @@ use std::hash::Hash;
 use crate::entity::storage::hash::FnvEntityMap;
 use crate::entity::storage::slot::{SlotEntityMap, SlotKey};
 use crate::entity::storage::{
-    AsStorage, AsStorageMut, Dispatch, Get, Insert, InsertWithKey, Key, Remove, Sequence, Storage,
+    AsStorage, AsStorageMut, Dispatch, Enumerate, Get, Insert, InsertWithKey, Key, Remove, Storage,
     StorageObject,
 };
 use crate::entity::Entity;
@@ -122,6 +122,28 @@ where
     type Object<'a> where E: 'a = StorageObject<'a, E>;
 }
 
+impl<T, E> Enumerate<E> for Journaled<T, E>
+where
+    T: Default + Dispatch<E> + JournalState + Storage<E> + Unjournaled,
+    E: Entity<Storage = T>,
+{
+    fn len(&self) -> usize {
+        self.storage.len()
+    }
+
+    fn iter<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &E)>> {
+        self.storage.iter()
+    }
+
+    fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &mut E)>> {
+        self.storage.iter_mut()
+    }
+
+    fn keys<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = E::Key>> {
+        self.storage.keys()
+    }
+}
+
 impl<T, E> Get<E> for Journaled<T, E>
 where
     T: Default + Dispatch<E> + JournalState + Storage<E> + Unjournaled,
@@ -175,27 +197,5 @@ where
 {
     fn remove(&mut self, key: &E::Key) -> Option<E> {
         self.storage.remove(key)
-    }
-}
-
-impl<T, E> Sequence<E> for Journaled<T, E>
-where
-    T: Default + Dispatch<E> + JournalState + Storage<E> + Unjournaled,
-    E: Entity<Storage = T>,
-{
-    fn len(&self) -> usize {
-        self.storage.len()
-    }
-
-    fn iter<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &E)>> {
-        self.storage.iter()
-    }
-
-    fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &mut E)>> {
-        self.storage.iter_mut()
-    }
-
-    fn keys<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = E::Key>> {
-        self.storage.keys()
     }
 }

@@ -5,8 +5,8 @@ use std::num::NonZeroU32;
 
 use crate::entity::storage::journal::{JournalState, SyntheticKey, Unjournaled};
 use crate::entity::storage::{
-    AsStorage, AsStorageMut, Dispatch, Get, InnerKey, Insert, IntrinsicStorage, Key, Remove,
-    Sequence, StorageObject,
+    AsStorage, AsStorageMut, Dispatch, Enumerate, Get, InnerKey, Insert, IntrinsicStorage, Key,
+    Remove, StorageObject,
 };
 use crate::entity::Entity;
 
@@ -80,6 +80,34 @@ where
     type Object<'a> where E: 'a = dyn 'a + IntrinsicStorage<E>;
 }
 
+impl<E> Enumerate<E> for HopSlotMap<InnerKey<E::Key>, E>
+where
+    E: Entity,
+    InnerKey<E::Key>: SlotKey,
+{
+    fn len(&self) -> usize {
+        self.len()
+    }
+
+    fn iter<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &E)>> {
+        Box::new(
+            self.iter()
+                .map(|(key, entity)| (E::Key::from_inner(key), entity)),
+        )
+    }
+
+    fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &mut E)>> {
+        Box::new(
+            self.iter_mut()
+                .map(|(key, entity)| (E::Key::from_inner(key), entity)),
+        )
+    }
+
+    fn keys<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = E::Key>> {
+        Box::new(self.keys().map(E::Key::from_inner))
+    }
+}
+
 impl<E> Get<E> for HopSlotMap<InnerKey<E::Key>, E>
 where
     E: Entity,
@@ -126,34 +154,6 @@ where
 {
     fn remove(&mut self, key: &E::Key) -> Option<E> {
         self.remove(key.into_inner())
-    }
-}
-
-impl<E> Sequence<E> for HopSlotMap<InnerKey<E::Key>, E>
-where
-    E: Entity,
-    InnerKey<E::Key>: SlotKey,
-{
-    fn len(&self) -> usize {
-        self.len()
-    }
-
-    fn iter<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &E)>> {
-        Box::new(
-            self.iter()
-                .map(|(key, entity)| (E::Key::from_inner(key), entity)),
-        )
-    }
-
-    fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &mut E)>> {
-        Box::new(
-            self.iter_mut()
-                .map(|(key, entity)| (E::Key::from_inner(key), entity)),
-        )
-    }
-
-    fn keys<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = E::Key>> {
-        Box::new(self.keys().map(E::Key::from_inner))
     }
 }
 
