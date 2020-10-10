@@ -48,7 +48,7 @@ where
         E: 'a;
 }
 
-// TODO: Provide a GATs implementation for the `unstable` feature.
+// TODO: Can GATs be used here while still supporting trait objects?
 pub trait Enumerate<E>
 where
     E: Entity,
@@ -57,6 +57,15 @@ where
 
     fn iter<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &E)>>;
 
+    // TODO: Move this function out of storage traits and into unjournaled
+    //       storage types.
+    //
+    //       This function is hostile to journaling and would require an
+    //       iterator that puts writes in the log each time a mutable reference
+    //       is pulled from the it. However, it is necessary for categorical
+    //       iterators over user data in entities (e.g.,
+    //       `MeshGraph::vertex_orphans`). This can be supported with a more
+    //       limited function that is exclusive to unjournaled storage.
     fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &mut E)>>;
 
     fn keys<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = E::Key>>;

@@ -1,3 +1,4 @@
+use fool::BoolExt as _;
 use ordered_multimap::ListOrderedMultimap as LinkedMultiMap;
 use std::hash::Hash;
 
@@ -128,19 +129,19 @@ where
     E: Entity<Storage = T>,
 {
     fn len(&self) -> usize {
-        self.storage.len()
+        todo!()
     }
 
     fn iter<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &E)>> {
-        self.storage.iter()
+        todo!()
     }
 
     fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &mut E)>> {
-        self.storage.iter_mut()
+        todo!()
     }
 
     fn keys<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = E::Key>> {
-        self.storage.keys()
+        todo!()
     }
 }
 
@@ -150,11 +151,32 @@ where
     E: Entity<Storage = T>,
 {
     fn get(&self, key: &E::Key) -> Option<&E> {
-        self.storage.get(key)
+        if let Some(mutation) = self.log.get_all(key).next_back() {
+            match mutation {
+                Mutation::Insert(ref entity) | Mutation::Write(ref entity) => Some(entity),
+                Mutation::Remove => None,
+            }
+        }
+        else {
+            self.storage.get(key)
+        }
     }
 
     fn get_mut(&mut self, key: &E::Key) -> Option<&mut E> {
-        self.storage.get_mut(key)
+        // TODO: Should mutations be aggregated in the log?
+        let entity = self.get(key).cloned();
+        if let Some(entity) = entity {
+            self.log.append(*key, Mutation::Write(entity));
+            if let Mutation::Write(ref mut entity) = self.log.back_mut().unwrap().1 {
+                Some(entity)
+            }
+            else {
+                unreachable!()
+            }
+        }
+        else {
+            None
+        }
     }
 }
 
@@ -166,7 +188,7 @@ where
 {
     fn insert(&mut self, entity: E) -> E::Key {
         let key = SyntheticKey::synthesize(&mut self.state);
-        self.log.insert(key, Mutation::Insert(entity));
+        self.log.append(key, Mutation::Insert(entity));
         key
     }
 }
@@ -177,16 +199,10 @@ where
     E: Entity<Storage = T>,
 {
     fn insert_with_key(&mut self, key: &E::Key, entity: E) -> Option<E> {
+        let occupant = self.get(key).cloned();
         self.log
-            .insert(*key, Mutation::Insert(entity))
-            .and_then(|mutation| {
-                if let Mutation::Insert(entity) = mutation {
-                    Some(entity)
-                }
-                else {
-                    None
-                }
-            })
+            .append(*key, Mutation::Insert(entity))
+            .and_then(|| occupant)
     }
 }
 
@@ -196,6 +212,8 @@ where
     E: Entity<Storage = T>,
 {
     fn remove(&mut self, key: &E::Key) -> Option<E> {
-        self.storage.remove(key)
+        let occupant = self.get(key).cloned();
+        self.log.append(*key, Mutation::Remove);
+        occupant
     }
 }
