@@ -269,7 +269,10 @@ where
     M: AsStorage<Arc<G>> + Parametric<Data = G>,
     G: GraphData,
 {
-    pub fn get(&self) -> &G::Arc {
+    pub fn get<'a>(&'a self) -> &'a G::Arc
+    where
+        G: 'a,
+    {
         self.inner.get()
     }
 }
@@ -280,7 +283,10 @@ where
     M: AsStorageMut<Arc<G>> + Parametric<Data = G>,
     G: GraphData,
 {
-    pub fn get_mut(&mut self) -> &mut G::Arc {
+    pub fn get_mut<'a>(&'a mut self) -> &'a mut G::Arc
+    where
+        G: 'a,
+    {
         self.inner.get_mut()
     }
 }
@@ -1117,7 +1123,7 @@ where
 
 impl<'a, G> ArcOrphan<'a, G>
 where
-    G: GraphData,
+    G: 'a + GraphData,
 {
     pub fn get(&self) -> &G::Arc {
         self.inner.get()
@@ -1154,7 +1160,7 @@ impl<'a, G> Eq for ArcOrphan<'a, G> where G: GraphData {}
 impl<'a, M, G> From<ArcView<&'a mut M>> for ArcOrphan<'a, G>
 where
     M: AsStorageMut<Arc<G>> + Parametric<Data = G>,
-    G: GraphData,
+    G: 'a + GraphData,
 {
     fn from(arc: ArcView<&'a mut M>) -> Self {
         Orphan::from(arc.inner).into()
@@ -1173,7 +1179,7 @@ where
 impl<'a, M, G> From<View<&'a mut M, Arc<G>>> for ArcOrphan<'a, G>
 where
     M: AsStorageMut<Arc<G>> + Parametric<Data = G>,
-    G: GraphData,
+    G: 'a + GraphData,
 {
     fn from(view: View<&'a mut M, Arc<G>>) -> Self {
         ArcOrphan { inner: view.into() }
@@ -1309,7 +1315,10 @@ where
     M: AsStorage<Edge<G>> + Parametric<Data = G>,
     G: GraphData,
 {
-    pub fn get(&self) -> &G::Edge {
+    pub fn get<'a>(&'a self) -> &'a G::Edge
+    where
+        G: 'a,
+    {
         self.inner.get()
     }
 }
@@ -1320,7 +1329,10 @@ where
     M: AsStorageMut<Edge<G>> + Parametric<Data = G>,
     G: GraphData,
 {
-    pub fn get_mut(&mut self) -> &mut G::Edge {
+    pub fn get_mut<'a>(&'a mut self) -> &'a mut G::Edge
+    where
+        G: 'a,
+    {
         self.inner.get_mut()
     }
 }
@@ -1530,7 +1542,7 @@ where
 
 impl<'a, G> EdgeOrphan<'a, G>
 where
-    G: GraphData,
+    G: 'a + GraphData,
 {
     pub fn get(&self) -> &G::Edge {
         self.inner.get()
@@ -1567,7 +1579,7 @@ impl<'a, G> Eq for EdgeOrphan<'a, G> where G: GraphData {}
 impl<'a, M, G> From<EdgeView<&'a mut M>> for EdgeOrphan<'a, G>
 where
     M: AsStorageMut<Edge<G>> + Parametric<Data = G>,
-    G: GraphData,
+    G: 'a + GraphData,
 {
     fn from(edge: EdgeView<&'a mut M>) -> Self {
         Orphan::from(edge.inner).into()
@@ -1586,7 +1598,7 @@ where
 impl<'a, M, G> From<View<&'a mut M, Edge<G>>> for EdgeOrphan<'a, G>
 where
     M: AsStorageMut<Edge<G>> + Parametric<Data = G>,
-    G: GraphData,
+    G: 'a + GraphData,
 {
     fn from(view: View<&'a mut M, Edge<G>>) -> Self {
         EdgeOrphan { inner: view.into() }

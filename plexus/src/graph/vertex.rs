@@ -172,7 +172,10 @@ where
     M: AsStorage<Vertex<G>> + Parametric<Data = G>,
     G: GraphData,
 {
-    pub fn get(&self) -> &G::Vertex {
+    pub fn get<'a>(&'a self) -> &'a G::Vertex
+    where
+        G: 'a,
+    {
         self.inner.get()
     }
 
@@ -191,7 +194,10 @@ where
     M: AsStorageMut<Vertex<G>> + Parametric<Data = G>,
     G: GraphData,
 {
-    pub fn get_mut(&mut self) -> &mut G::Vertex {
+    pub fn get_mut<'a>(&'a mut self) -> &'a mut G::Vertex
+    where
+        G: 'a,
+    {
         self.inner.get_mut()
     }
 }
@@ -727,19 +733,24 @@ impl<'a, G> VertexOrphan<'a, G>
 where
     G: GraphData,
 {
+    pub fn position(&self) -> &VertexPosition<G>
+    where
+        G::Vertex: AsPosition,
+    {
+        self.inner.get().as_position()
+    }
+}
+
+impl<'a, G> VertexOrphan<'a, G>
+where
+    G: 'a + GraphData,
+{
     pub fn get(&self) -> &G::Vertex {
         self.inner.get()
     }
 
     pub fn get_mut(&mut self) -> &mut G::Vertex {
         self.inner.get_mut()
-    }
-
-    pub fn position(&self) -> &VertexPosition<G>
-    where
-        G::Vertex: AsPosition,
-    {
-        self.inner.get().as_position()
     }
 }
 
@@ -778,7 +789,7 @@ where
 impl<'a, M, G> From<View<&'a mut M, Vertex<G>>> for VertexOrphan<'a, G>
 where
     M: AsStorageMut<Vertex<G>> + Parametric<Data = G>,
-    G: GraphData,
+    G: 'a + GraphData,
 {
     fn from(view: View<&'a mut M, Vertex<G>>) -> Self {
         VertexOrphan { inner: view.into() }
@@ -788,7 +799,7 @@ where
 impl<'a, M, G> From<VertexView<&'a mut M>> for VertexOrphan<'a, G>
 where
     M: AsStorageMut<Vertex<G>> + Parametric<Data = G>,
-    G: GraphData,
+    G: 'a + GraphData,
 {
     fn from(vertex: VertexView<&'a mut M>) -> Self {
         Orphan::from(vertex.inner).into()

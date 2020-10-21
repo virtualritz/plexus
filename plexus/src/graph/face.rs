@@ -197,7 +197,10 @@ where
     M: AsStorage<Face<G>> + Parametric<Data = G>,
     G: GraphData,
 {
-    pub fn get(&self) -> &G::Face {
+    pub fn get<'a>(&'a self) -> &'a G::Face
+    where
+        G: 'a,
+    {
         self.inner.get()
     }
 }
@@ -208,7 +211,10 @@ where
     M: AsStorageMut<Face<G>> + Parametric<Data = G>,
     G: GraphData,
 {
-    pub fn get_mut(&mut self) -> &mut G::Face {
+    pub fn get_mut<'a>(&'a mut self) -> &'a mut G::Face
+    where
+        G: 'a,
+    {
         self.inner.get_mut()
     }
 }
@@ -1063,7 +1069,7 @@ where
 
 impl<'a, G> FaceOrphan<'a, G>
 where
-    G: GraphData,
+    G: 'a + GraphData,
 {
     pub fn get(&self) -> &G::Face {
         self.inner.get()
@@ -1091,7 +1097,7 @@ impl<'a, G> Eq for FaceOrphan<'a, G> where G: GraphData {}
 impl<'a, M, G> From<FaceView<&'a mut M>> for FaceOrphan<'a, G>
 where
     M: AsStorageMut<Face<G>> + Parametric<Data = G>,
-    G: GraphData,
+    G: 'a + GraphData,
 {
     fn from(face: FaceView<&'a mut M>) -> Self {
         Orphan::from(face.inner).into()
@@ -1110,7 +1116,7 @@ where
 impl<'a, M, G> From<View<&'a mut M, Face<G>>> for FaceOrphan<'a, G>
 where
     M: AsStorageMut<Face<G>> + Parametric<Data = G>,
-    G: GraphData,
+    G: 'a + GraphData,
 {
     fn from(view: View<&'a mut M, Face<G>>) -> Self {
         FaceOrphan { inner: view.into() }
