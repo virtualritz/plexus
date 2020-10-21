@@ -787,7 +787,7 @@ where
     ///     let data = data.into_geometry();
     ///     input
     ///         .into_iter()
-    ///         .find(|vertex| vertex.data == data)
+    ///         .find(|vertex| *vertex.get() == data)
     ///         .map(|vertex| vertex.key())
     /// }
     ///

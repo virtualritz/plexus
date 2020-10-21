@@ -68,8 +68,8 @@
 //!
 //! [`MeshGraph`]s expose _views_ over their entities (vertices, arcs, edges,
 //! and faces). Views are a type of _smart pointer_ and bind entity storage with
-//! a key for a specific entity. They implement [`Deref`] for their associated
-//! entity type.
+//! a key for a specific entity. They extend entities with rich behaviors and
+//! expose their associated data via `get` and `get_mut` functions.
 //!
 //! Views provide the primary API for interacting with a [`MeshGraph`]'s
 //! topology and data. There are three types of views summarized below:
@@ -226,7 +226,7 @@
 //!     .into_next_arc()
 //!     .into_destination_vertex();
 //! for mut face in vertex.adjacent_face_orphans() {
-//!     // `face.data` is mutable here.
+//!     // `face.get_mut()` provides a mutable reference to face data.
 //! }
 //! ```
 //!
