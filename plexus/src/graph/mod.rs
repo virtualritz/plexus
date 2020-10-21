@@ -284,8 +284,11 @@ use crate::geometry::{FromGeometry, IntoGeometry};
 use crate::graph::builder::GraphBuilder;
 use crate::graph::core::{Core, OwnedCore};
 use crate::graph::data::Parametric;
+use crate::graph::edge::{Arc, Edge};
+use crate::graph::face::Face;
 use crate::graph::mutation::face::FaceInsertCache;
 use crate::graph::mutation::{Consistent, Mutation};
+use crate::graph::vertex::Vertex;
 use crate::index::{Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, IndexVertices, Indexer};
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::{IntoPolygons, Polygonal, UnboundedPolygon};
@@ -294,16 +297,14 @@ use crate::{DynamicArity, MeshArity, StaticArity};
 
 pub use crate::entity::view::{ClosedView, Rebind};
 pub use crate::graph::data::{EntityData, GraphData};
-pub use crate::graph::edge::{
-    Arc, ArcKey, ArcOrphan, ArcView, Edge, EdgeKey, EdgeOrphan, EdgeView, ToArc,
-};
-pub use crate::graph::face::{Face, FaceKey, FaceOrphan, FaceView, Ring, ToRing};
+pub use crate::graph::edge::{ArcKey, ArcOrphan, ArcView, EdgeKey, EdgeOrphan, EdgeView, ToArc};
+pub use crate::graph::face::{FaceKey, FaceOrphan, FaceView, Ring, ToRing};
 pub use crate::graph::geometry::{
     ArcNormal, EdgeMidpoint, FaceCentroid, FaceNormal, FacePlane, VertexCentroid, VertexNormal,
     VertexPosition,
 };
 pub use crate::graph::path::Path;
-pub use crate::graph::vertex::{Vertex, VertexKey, VertexOrphan, VertexView};
+pub use crate::graph::vertex::{VertexKey, VertexOrphan, VertexView};
 
 pub use Selector::ByIndex;
 pub use Selector::ByKey;
@@ -558,7 +559,7 @@ where
     pub fn vertex_orphans(&mut self) -> impl ExactSizeIterator<Item = VertexOrphan<G>> {
         self.as_storage_mut_of::<Vertex<_>>()
             .iter_mut()
-            .map(|(key, entity)| Orphan::bind_unchecked(entity, key))
+            .map(|(key, data)| Orphan::bind_unchecked(data, key))
             .map(From::from)
     }
 
@@ -590,7 +591,7 @@ where
     pub fn arc_orphans(&mut self) -> impl ExactSizeIterator<Item = ArcOrphan<G>> {
         self.as_storage_mut_of::<Arc<_>>()
             .iter_mut()
-            .map(|(key, entity)| Orphan::bind_unchecked(entity, key))
+            .map(|(key, data)| Orphan::bind_unchecked(data, key))
             .map(From::from)
     }
 
@@ -622,7 +623,7 @@ where
     pub fn edge_orphans(&mut self) -> impl ExactSizeIterator<Item = EdgeOrphan<G>> {
         self.as_storage_mut_of::<Edge<_>>()
             .iter_mut()
-            .map(|(key, entity)| Orphan::bind_unchecked(entity, key))
+            .map(|(key, data)| Orphan::bind_unchecked(data, key))
             .map(From::from)
     }
 
@@ -654,7 +655,7 @@ where
     pub fn face_orphans(&mut self) -> impl ExactSizeIterator<Item = FaceOrphan<G>> {
         self.as_storage_mut_of::<Face<_>>()
             .iter_mut()
-            .map(|(key, entity)| Orphan::bind_unchecked(entity, key))
+            .map(|(key, data)| Orphan::bind_unchecked(data, key))
             .map(From::from)
     }
 
@@ -758,7 +759,7 @@ where
             );
         }
         for mut vertex in self.vertex_orphans() {
-            *vertex.data.as_position_mut() = positions.remove(&vertex.key()).unwrap();
+            *vertex.get_mut().as_position_mut() = positions.remove(&vertex.key()).unwrap();
         }
     }
 
@@ -1612,7 +1613,7 @@ mod tests {
         }
         for mut vertex in graph.vertex_orphans() {
             // Data should be mutable.
-            vertex.data += Vector3::zero();
+            *vertex.get_mut() += Vector3::zero();
         }
     }
 
@@ -1688,7 +1689,7 @@ mod tests {
         let mut graph: MeshGraph<Weight> = UvSphere::new(4, 4).polygons::<Position<E3>>().collect();
         let value = 123_456_789;
         for mut face in graph.face_orphans() {
-            face.data = value;
+            *face.get_mut() = value;
         }
 
         // Read the geometry of each face to ensure it is what we expect.

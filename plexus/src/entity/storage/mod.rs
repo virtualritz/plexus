@@ -6,7 +6,7 @@ use fnv::FnvBuildHasher;
 use std::collections::HashMap;
 use std::hash::Hash;
 
-use crate::entity::Entity;
+use crate::entity::{Entity, Payload};
 
 // TODO: Should this module be flattened or expose sub-modules?
 pub use crate::entity::storage::hash::FnvEntityMap;
@@ -57,16 +57,14 @@ where
 
     fn iter<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &E)>>;
 
-    // TODO: Move this function out of storage traits and into unjournaled
-    //       storage types.
-    //
-    //       This function is hostile to journaling and would require an
-    //       iterator that puts writes in the log each time a mutable reference
-    //       is pulled from the it. However, it is necessary for categorical
-    //       iterators over user data in entities (e.g.,
-    //       `MeshGraph::vertex_orphans`). This can be supported with a more
-    //       limited function that is exclusive to unjournaled storage.
-    fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &mut E)>>;
+    // This iterator exposes mutable references to user data and **not**
+    // entities. This prevents categorical mutations of entities, which
+    // interacts poorly with journaling. Moreover, such an iterator does not
+    // provide much utility, because entities are typically mutated via
+    // relationships like adjacency.
+    fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &mut E::Data)>>
+    where
+        E: Payload;
 
     fn keys<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = E::Key>>;
 }

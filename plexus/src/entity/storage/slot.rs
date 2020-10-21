@@ -8,7 +8,7 @@ use crate::entity::storage::{
     AsStorage, AsStorageMut, Dispatch, Enumerate, Get, InnerKey, Insert, IntrinsicStorage, Key,
     Remove, StorageObject,
 };
-use crate::entity::Entity;
+use crate::entity::{Entity, Payload};
 
 pub use slotmap::Key as SlotKey;
 
@@ -96,10 +96,13 @@ where
         )
     }
 
-    fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &mut E)>> {
+    fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &mut E::Data)>>
+    where
+        E: Payload,
+    {
         Box::new(
             self.iter_mut()
-                .map(|(key, entity)| (E::Key::from_inner(key), entity)),
+                .map(|(key, entity)| (E::Key::from_inner(key), entity.get_mut())),
         )
     }
 

@@ -7,7 +7,7 @@ use crate::entity::storage::{
     AsStorage, AsStorageMut, Dispatch, Enumerate, ExtrinsicStorage, Get, InnerKey, InsertWithKey,
     Key, Remove, StorageObject,
 };
-use crate::entity::Entity;
+use crate::entity::{Entity, Payload};
 
 pub type FnvEntityMap<E> = HashMap<InnerKey<<E as Entity>::Key>, E, FnvBuildHasher>;
 
@@ -75,10 +75,13 @@ where
         )
     }
 
-    fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &mut E)>> {
+    fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &mut E::Data)>>
+    where
+        E: Payload,
+    {
         Box::new(
             self.iter_mut()
-                .map(|(key, entity)| (E::Key::from_inner(*key), entity)),
+                .map(|(key, entity)| (E::Key::from_inner(*key), entity.get_mut())),
         )
     }
 

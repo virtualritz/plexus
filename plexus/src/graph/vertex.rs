@@ -14,7 +14,7 @@ use crate::entity::dijkstra;
 use crate::entity::storage::{AsStorage, AsStorageMut, AsStorageOf, Key, SlotEntityMap};
 use crate::entity::traverse::{Adjacency, Breadth, Depth, Trace, TraceAny, TraceFirst, Traversal};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
-use crate::entity::Entity;
+use crate::entity::{Entity, Payload};
 use crate::geometry::Metric;
 use crate::graph::data::{Data, GraphData, Parametric};
 use crate::graph::edge::{Arc, ArcKey, ArcOrphan, ArcView, Edge};
@@ -36,16 +36,16 @@ where
 {
     /// User data.
     #[derivative(Debug = "ignore", Hash = "ignore")]
-    pub data: G::Vertex,
+    pub(in crate) data: G::Vertex,
     /// Required key into the leading arc.
-    pub(in crate::graph) arc: Option<ArcKey>,
+    pub(in crate) arc: Option<ArcKey>,
 }
 
 impl<G> Vertex<G>
 where
     G: GraphData,
 {
-    pub(in crate::graph) fn new(geometry: G::Vertex) -> Self {
+    pub fn new(geometry: G::Vertex) -> Self {
         Vertex {
             data: geometry,
             arc: None,
@@ -59,6 +59,21 @@ where
 {
     type Key = VertexKey;
     type Storage = SlotEntityMap<Self>;
+}
+
+impl<G> Payload for Vertex<G>
+where
+    G: GraphData,
+{
+    type Data = G::Vertex;
+
+    fn get(&self) -> &Self::Data {
+        &self.data
+    }
+
+    fn get_mut(&mut self) -> &mut Self::Data {
+        &mut self.data
+    }
 }
 
 /// Vertex key.
@@ -77,11 +92,10 @@ impl Key for VertexKey {
     }
 }
 
-/// View of a [`Vertex`] entity.
+/// View of a vertex entity.
 ///
 /// See the [`graph`] module documentation for more information about views.
 ///
-/// [`Vertex`]: crate::graph::Vertex
 /// [`graph`]: crate::graph
 pub struct VertexView<B>
 where
@@ -98,14 +112,6 @@ where
 {
     pub fn to_ref(&self) -> VertexView<&M> {
         self.inner.to_ref().into()
-    }
-
-    pub fn position<'a>(&'a self) -> &'a VertexPosition<Data<B>>
-    where
-        Data<B>: 'a,
-        <Data<B> as GraphData>::Vertex: AsPosition,
-    {
-        self.data.as_position()
     }
 }
 
@@ -157,6 +163,36 @@ where
     /// ```
     pub fn into_ref(self) -> VertexView<&'a M> {
         self.inner.into_ref().into()
+    }
+}
+
+impl<B, M, G> VertexView<B>
+where
+    B: Reborrow<Target = M>,
+    M: AsStorage<Vertex<G>> + Parametric<Data = G>,
+    G: GraphData,
+{
+    pub fn get(&self) -> &G::Vertex {
+        self.inner.get()
+    }
+
+    pub fn position<'a>(&'a self) -> &'a VertexPosition<G>
+    where
+        G: 'a,
+        G::Vertex: AsPosition,
+    {
+        self.data.as_position()
+    }
+}
+
+impl<B, M, G> VertexView<B>
+where
+    B: ReborrowMut<Target = M>,
+    M: AsStorageMut<Vertex<G>> + Parametric<Data = G>,
+    G: GraphData,
+{
+    pub fn get_mut(&mut self) -> &mut G::Vertex {
+        self.inner.get_mut()
     }
 }
 
@@ -679,9 +715,7 @@ where
     }
 }
 
-/// Orphan view of a [`Vertex`] entity.
-///
-/// [`Vertex`]: crate::graph::Vertex
+/// Orphan view of a vertex entity.
 pub struct VertexOrphan<'a, G>
 where
     G: GraphData,
@@ -693,11 +727,19 @@ impl<'a, G> VertexOrphan<'a, G>
 where
     G: GraphData,
 {
+    pub fn get(&self) -> &G::Vertex {
+        self.inner.get()
+    }
+
+    pub fn get_mut(&mut self) -> &mut G::Vertex {
+        self.inner.get_mut()
+    }
+
     pub fn position(&self) -> &VertexPosition<G>
     where
         G::Vertex: AsPosition,
     {
-        self.inner.data.as_position()
+        self.inner.get().as_position()
     }
 }
 
@@ -719,26 +761,6 @@ where
 
     fn key(&self) -> Self::Key {
         self.inner.key()
-    }
-}
-
-impl<'a, G> Deref for VertexOrphan<'a, G>
-where
-    G: GraphData,
-{
-    type Target = Vertex<G>;
-
-    fn deref(&self) -> &Self::Target {
-        self.inner.deref()
-    }
-}
-
-impl<'a, G> DerefMut for VertexOrphan<'a, G>
-where
-    G: GraphData,
-{
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.inner.deref_mut()
     }
 }
 
@@ -868,8 +890,9 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         VertexCirculator::next(self).map(|key| {
             let vertex = self.inner.storage.as_storage_mut().get_mut(&key).unwrap();
-            let vertex = unsafe { mem::transmute::<&'_ mut Vertex<G>, &'a mut Vertex<G>>(vertex) };
-            Orphan::bind_unchecked(vertex, key).into()
+            let data = &mut vertex.data;
+            let data = unsafe { mem::transmute::<&'_ mut G::Vertex, &'a mut G::Vertex>(data) };
+            Orphan::bind_unchecked(data, key).into()
         })
     }
 }
@@ -969,8 +992,9 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         ArcCirculator::next(self).map(|key| {
             let arc = self.storage.as_storage_mut().get_mut(&key).unwrap();
-            let arc = unsafe { mem::transmute::<&'_ mut Arc<G>, &'a mut Arc<G>>(arc) };
-            Orphan::bind_unchecked(arc, key).into()
+            let data = &mut arc.data;
+            let data = unsafe { mem::transmute::<&'_ mut G::Arc, &'a mut G::Arc>(data) };
+            Orphan::bind_unchecked(data, key).into()
         })
     }
 }
@@ -1063,8 +1087,9 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         FaceCirculator::next(self).map(|key| {
             let face = self.inner.storage.as_storage_mut().get_mut(&key).unwrap();
-            let face = unsafe { mem::transmute::<&'_ mut Face<G>, &'a mut Face<G>>(face) };
-            Orphan::bind_unchecked(face, key).into()
+            let data = &mut face.data;
+            let data = unsafe { mem::transmute::<&'_ mut G::Face, &'a mut G::Face>(data) };
+            Orphan::bind_unchecked(data, key).into()
         })
     }
 }

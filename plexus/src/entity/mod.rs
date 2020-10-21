@@ -32,3 +32,11 @@ pub trait Entity: Copy + Lifetime + Sized {
     type Key: Key;
     type Storage: Default + Dispatch<Self> + Storage<Self> + Unjournaled;
 }
+
+pub trait Payload: Entity {
+    type Data;
+
+    fn get(&self) -> &Self::Data;
+
+    fn get_mut(&mut self) -> &mut Self::Data;
+}

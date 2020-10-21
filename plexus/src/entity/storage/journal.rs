@@ -8,7 +8,7 @@ use crate::entity::storage::{
     AsStorage, AsStorageMut, Dispatch, Enumerate, Get, Insert, InsertWithKey, Key, Remove, Storage,
     StorageObject,
 };
-use crate::entity::Entity;
+use crate::entity::{Entity, Payload};
 
 // TODO: Implement `Journaled` such that it does not mutate its source storage
 //       until the log is committed.
@@ -136,7 +136,12 @@ where
         todo!()
     }
 
-    fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &mut E)>> {
+    // This does not require logging, because only keys and user data are
+    // exposed.
+    fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &mut E::Data)>>
+    where
+        E: Payload,
+    {
         todo!()
     }
 
