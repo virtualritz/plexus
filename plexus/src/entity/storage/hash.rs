@@ -68,14 +68,14 @@ where
         self.len()
     }
 
-    fn iter<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &E)>> {
+    fn iter<'a>(&'a self) -> Box<dyn 'a + Iterator<Item = (E::Key, &E)>> {
         Box::new(
             self.iter()
                 .map(|(key, entity)| (E::Key::from_inner(*key), entity)),
         )
     }
 
-    fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &mut E::Data)>>
+    fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + Iterator<Item = (E::Key, &mut E::Data)>>
     where
         E: Payload,
     {
@@ -85,7 +85,7 @@ where
         )
     }
 
-    fn keys<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = E::Key>> {
+    fn keys<'a>(&'a self) -> Box<dyn 'a + Iterator<Item = E::Key>> {
         Box::new(self.keys().map(|key| E::Key::from_inner(*key)))
     }
 }

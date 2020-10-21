@@ -55,18 +55,18 @@ where
 {
     fn len(&self) -> usize;
 
-    fn iter<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &E)>>;
+    fn iter<'a>(&'a self) -> Box<dyn 'a + Iterator<Item = (E::Key, &E)>>;
 
     // This iterator exposes mutable references to user data and **not**
     // entities. This prevents categorical mutations of entities, which
     // interacts poorly with journaling. Moreover, such an iterator does not
     // provide much utility, because entities are typically mutated via
     // relationships like adjacency.
-    fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &mut E::Data)>>
+    fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + Iterator<Item = (E::Key, &mut E::Data)>>
     where
         E: Payload;
 
-    fn keys<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = E::Key>>;
+    fn keys<'a>(&'a self) -> Box<dyn 'a + Iterator<Item = E::Key>>;
 }
 
 pub trait Get<E>

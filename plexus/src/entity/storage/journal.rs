@@ -1,5 +1,7 @@
+use fnv::FnvBuildHasher;
 use fool::BoolExt as _;
 use ordered_multimap::ListOrderedMultimap as LinkedMultiMap;
+use std::collections::HashSet;
 use std::hash::Hash;
 
 use crate::entity::storage::hash::FnvEntityMap;
@@ -33,6 +35,25 @@ where
     Insert(E),
     Remove,
     Write(E),
+}
+
+impl<E> Mutation<E>
+where
+    E: Entity,
+{
+    pub fn as_entity(&self) -> Option<&E> {
+        match *self {
+            Mutation::Insert(ref entity) | Mutation::Write(ref entity) => Some(entity),
+            Mutation::Remove => None,
+        }
+    }
+
+    pub fn as_entity_mut(&mut self) -> Option<&mut E> {
+        match *self {
+            Mutation::Insert(ref mut entity) | Mutation::Write(ref mut entity) => Some(entity),
+            Mutation::Remove => None,
+        }
+    }
 }
 
 // TODO: The type parameter `T` is only used to implement `AsStorage`. Is there
@@ -132,21 +153,44 @@ where
         todo!()
     }
 
-    fn iter<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &E)>> {
-        todo!()
+    fn iter<'a>(&'a self) -> Box<dyn 'a + Iterator<Item = (E::Key, &E)>> {
+        let keys: HashSet<_, FnvBuildHasher> = self.log.keys().collect();
+        Box::new(
+            self.storage
+                .iter()
+                .filter(move |(key, _)| !keys.contains(key))
+                .chain(self.log.pairs().flat_map(move |(key, mut entry)| {
+                    entry
+                        .next_back()
+                        .and_then(|mutation| mutation.as_entity().map(|entity| (*key, entity)))
+                })),
+        )
     }
 
     // This does not require logging, because only keys and user data are
-    // exposed.
-    fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + ExactSizeIterator<Item = (E::Key, &mut E::Data)>>
+    // exposed. Items yielded by this iterator are not recorded as writes.
+    fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + Iterator<Item = (E::Key, &mut E::Data)>>
     where
         E: Payload,
     {
-        todo!()
+        let keys: HashSet<_, FnvBuildHasher> = self.log.keys().cloned().collect();
+        Box::new(
+            self.storage
+                .iter_mut()
+                .filter(move |(key, _)| !keys.contains(key))
+                .chain(self.log.pairs_mut().flat_map(move |(key, mut entry)| {
+                    entry.next_back().and_then(|mutation| {
+                        mutation
+                            .as_entity_mut()
+                            .map(|entity| (*key, entity.get_mut()))
+                    })
+                })),
+        )
     }
 
-    fn keys<'a>(&'a self) -> Box<dyn 'a + ExactSizeIterator<Item = E::Key>> {
-        todo!()
+    fn keys<'a>(&'a self) -> Box<dyn 'a + Iterator<Item = E::Key>> {
+        // TODO: This boxes the iterator twice.
+        Box::new(self.iter().map(|(key, _)| key))
     }
 }
 
@@ -157,10 +201,7 @@ where
 {
     fn get(&self, key: &E::Key) -> Option<&E> {
         if let Some(mutation) = self.log.get_all(key).next_back() {
-            match mutation {
-                Mutation::Insert(ref entity) | Mutation::Write(ref entity) => Some(entity),
-                Mutation::Remove => None,
-            }
+            mutation.as_entity()
         }
         else {
             self.storage.get(key)

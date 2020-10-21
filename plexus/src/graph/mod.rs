@@ -548,7 +548,7 @@ where
 
     // TODO: Return `Clone + Iterator`.
     /// Gets an iterator of immutable views over the vertices in the graph.
-    pub fn vertices(&self) -> impl ExactSizeIterator<Item = VertexView<&Self>> {
+    pub fn vertices(&self) -> impl Iterator<Item = VertexView<&Self>> {
         self.as_storage_of::<Vertex<_>>()
             .keys()
             .map(move |key| View::bind_unchecked(self, key))
@@ -556,7 +556,7 @@ where
     }
 
     /// Gets an iterator of orphan views over the vertices in the graph.
-    pub fn vertex_orphans(&mut self) -> impl ExactSizeIterator<Item = VertexOrphan<G>> {
+    pub fn vertex_orphans(&mut self) -> impl Iterator<Item = VertexOrphan<G>> {
         self.as_storage_mut_of::<Vertex<_>>()
             .iter_mut()
             .map(|(key, data)| Orphan::bind_unchecked(data, key))
@@ -580,7 +580,7 @@ where
 
     // TODO: Return `Clone + Iterator`.
     /// Gets an iterator of immutable views over the arcs in the graph.
-    pub fn arcs(&self) -> impl ExactSizeIterator<Item = ArcView<&Self>> {
+    pub fn arcs(&self) -> impl Iterator<Item = ArcView<&Self>> {
         self.as_storage_of::<Arc<_>>()
             .keys()
             .map(move |key| View::bind_unchecked(self, key))
@@ -588,7 +588,7 @@ where
     }
 
     /// Gets an iterator of orphan views over the arcs in the graph.
-    pub fn arc_orphans(&mut self) -> impl ExactSizeIterator<Item = ArcOrphan<G>> {
+    pub fn arc_orphans(&mut self) -> impl Iterator<Item = ArcOrphan<G>> {
         self.as_storage_mut_of::<Arc<_>>()
             .iter_mut()
             .map(|(key, data)| Orphan::bind_unchecked(data, key))
@@ -612,7 +612,7 @@ where
 
     // TODO: Return `Clone + Iterator`.
     /// Gets an iterator of immutable views over the edges in the graph.
-    pub fn edges(&self) -> impl ExactSizeIterator<Item = EdgeView<&Self>> {
+    pub fn edges(&self) -> impl Iterator<Item = EdgeView<&Self>> {
         self.as_storage_of::<Edge<_>>()
             .keys()
             .map(move |key| View::bind_unchecked(self, key))
@@ -620,7 +620,7 @@ where
     }
 
     /// Gets an iterator of orphan views over the edges in the graph.
-    pub fn edge_orphans(&mut self) -> impl ExactSizeIterator<Item = EdgeOrphan<G>> {
+    pub fn edge_orphans(&mut self) -> impl Iterator<Item = EdgeOrphan<G>> {
         self.as_storage_mut_of::<Edge<_>>()
             .iter_mut()
             .map(|(key, data)| Orphan::bind_unchecked(data, key))
@@ -644,7 +644,7 @@ where
 
     // TODO: Return `Clone + Iterator`.
     /// Gets an iterator of immutable views over the faces in the graph.
-    pub fn faces(&self) -> impl ExactSizeIterator<Item = FaceView<&Self>> {
+    pub fn faces(&self) -> impl Iterator<Item = FaceView<&Self>> {
         self.as_storage_of::<Face<_>>()
             .keys()
             .map(move |key| View::bind_unchecked(self, key))
@@ -652,7 +652,7 @@ where
     }
 
     /// Gets an iterator of orphan views over the faces in the graph.
-    pub fn face_orphans(&mut self) -> impl ExactSizeIterator<Item = FaceOrphan<G>> {
+    pub fn face_orphans(&mut self) -> impl Iterator<Item = FaceOrphan<G>> {
         self.as_storage_mut_of::<Face<_>>()
             .iter_mut()
             .map(|(key, data)| Orphan::bind_unchecked(data, key))
