@@ -225,24 +225,26 @@ where
         let p = self
             .log
             .pairs()
-            .filter_map(|(_, entry)| {
+            .filter_map(|(key, entry)| {
                 entry
                     .into_iter()
                     .rev()
                     .find(|mutation| !matches!(mutation, Mutation::Write(_)))
                     .filter(|mutation| matches!(mutation, Mutation::Insert(_)))
+                    .filter(|_| !self.storage.contains_key(key))
             })
             .count();
         // Count removed entities in the log.
         let q = self
             .log
             .pairs()
-            .filter_map(|(_, entry)| {
+            .filter_map(|(key, entry)| {
                 entry
                     .into_iter()
                     .rev()
                     .find(|mutation| !matches!(mutation, Mutation::Write(_)))
                     .filter(|mutation| matches!(mutation, Mutation::Remove))
+                    .filter(|_| self.storage.contains_key(key))
             })
             .count();
         n + p - q
@@ -353,7 +355,9 @@ where
 {
     fn remove(&mut self, key: &E::Key) -> Option<E> {
         let occupant = self.get(key).cloned();
-        self.log.append(*key, Mutation::Remove);
+        if occupant.is_some() {
+            self.log.append(*key, Mutation::Remove);
+        }
         occupant
     }
 }
