@@ -56,27 +56,6 @@ where
             Mutation::Remove => None,
         }
     }
-
-    pub fn is_insert(&self) -> bool {
-        match *self {
-            Mutation::Insert(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_remove(&self) -> bool {
-        match *self {
-            Mutation::Remove => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_write(&self) -> bool {
-        match *self {
-            Mutation::Write(_) => true,
-            _ => false,
-        }
-    }
 }
 
 // TODO: The type parameter `T` is only used to implement `AsStorage`. Is there
@@ -217,8 +196,8 @@ where
                 entry
                     .into_iter()
                     .rev()
-                    .find(|mutation| !mutation.is_write())
-                    .filter(|mutation| mutation.is_insert())
+                    .find(|mutation| !matches!(mutation, Mutation::Write(_)))
+                    .filter(|mutation| matches!(mutation, Mutation::Insert(_)))
             })
             .count();
         // Count removed entities in the log.
@@ -229,8 +208,8 @@ where
                 entry
                     .into_iter()
                     .rev()
-                    .find(|mutation| !mutation.is_write())
-                    .filter(|mutation| mutation.is_remove())
+                    .find(|mutation| !matches!(mutation, Mutation::Write(_)))
+                    .filter(|mutation| matches!(mutation, Mutation::Remove))
             })
             .count();
         n + p - q
