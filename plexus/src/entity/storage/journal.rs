@@ -217,8 +217,7 @@ where
                 entry
                     .into_iter()
                     .rev()
-                    .filter(|mutation| !mutation.is_write())
-                    .next()
+                    .find(|mutation| !mutation.is_write())
                     .filter(|mutation| mutation.is_insert())
             })
             .count();
@@ -230,8 +229,7 @@ where
                 entry
                     .into_iter()
                     .rev()
-                    .filter(|mutation| !mutation.is_write())
-                    .next()
+                    .find(|mutation| !mutation.is_write())
                     .filter(|mutation| mutation.is_remove())
             })
             .count();
