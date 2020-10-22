@@ -88,7 +88,40 @@ where
     E::Key: SyntheticKey<T::State>,
 {
     pub fn commit_and_rekey(self) -> (T, Rekeying<E::Key>) {
-        todo!()
+        let Journaled {
+            mut storage,
+            mut log,
+            ..
+        } = self;
+        let mut rekeying = Rekeying::<_>::default();
+        for (key, mutation) in log
+            .drain_pairs()
+            .flat_map(|(key, mut entry)| entry.next_back().map(|mutation| (key, mutation)))
+        {
+            // TODO: Should unmapped keys be inserted into the rekeying? Note
+            //       that removing such keys may complicate rekeying of
+            //       dependent keys.
+            let rekey = match mutation {
+                Mutation::Insert(entity) | Mutation::Write(entity) => {
+                    if let Some(occupant) = storage.get_mut(&key) {
+                        *occupant = entity;
+                        key
+                    }
+                    else {
+                        storage.insert(entity)
+                    }
+                }
+                Mutation::Remove => {
+                    // This key may only exist in the log i.e., if an entity is
+                    // inserted and then removed while journaled. In that case,
+                    // this is a no-op.
+                    storage.remove(&key);
+                    key
+                }
+            };
+            rekeying.insert(key, rekey);
+        }
+        (storage, rekeying)
     }
 }
 
