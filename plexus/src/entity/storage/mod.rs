@@ -2,15 +2,13 @@ mod hash;
 mod journal;
 mod slot;
 
-use fnv::FnvBuildHasher;
-use std::collections::HashMap;
 use std::hash::Hash;
 
-use crate::entity::{Entity, Payload};
+use crate::entity::{Entity, EntityError, Payload};
 
 // TODO: Should this module be flattened or expose sub-modules?
 pub use crate::entity::storage::hash::FnvEntityMap;
-pub use crate::entity::storage::journal::Unjournaled;
+pub use crate::entity::storage::journal::{Rekeying, Unjournaled};
 pub use crate::entity::storage::slot::SlotEntityMap;
 
 #[cfg(not(all(nightly, feature = "unstable")))]
@@ -18,7 +16,6 @@ pub type StorageObject<E> = <<E as Entity>::Storage as Dispatch<E>>::Object;
 #[cfg(all(nightly, feature = "unstable"))]
 pub type StorageObject<'a, E> = <<E as Entity>::Storage as Dispatch<E>>::Object<'a>;
 
-pub type Rekeying<E> = HashMap<<E as Entity>::Key, <E as Entity>::Key, FnvBuildHasher>;
 pub type InnerKey<K> = <K as Key>::Inner;
 
 pub trait Key: Copy + Eq + Hash + Sized {
@@ -27,6 +24,12 @@ pub trait Key: Copy + Eq + Hash + Sized {
     fn from_inner(key: Self::Inner) -> Self;
 
     fn into_inner(self) -> Self::Inner;
+}
+
+pub trait DependantKey: Key {
+    type Foreign: Key;
+
+    fn rekey(self, rekeying: &Rekeying<Self::Foreign>) -> Result<Self, EntityError>;
 }
 
 #[cfg(not(all(nightly, feature = "unstable")))]

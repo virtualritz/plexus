@@ -10,9 +10,11 @@ use theon::space::{EuclideanSpace, Scalar, Vector};
 use theon::{AsPosition, AsPositionMut};
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
-use crate::entity::storage::{AsStorage, AsStorageMut, FnvEntityMap, Key, SlotEntityMap};
+use crate::entity::storage::{
+    AsStorage, AsStorageMut, DependantKey, FnvEntityMap, Key, Rekeying, SlotEntityMap,
+};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
-use crate::entity::{Entity, Payload};
+use crate::entity::{Entity, EntityError, Payload};
 use crate::graph::data::{Data, GraphData, Parametric};
 use crate::graph::face::{Face, FaceKey, FaceOrphan, FaceView, Ring};
 use crate::graph::geometry::{ArcNormal, EdgeMidpoint, VertexPosition};
@@ -107,6 +109,17 @@ impl ArcKey {
     pub(in crate::graph) fn into_opposite(self) -> ArcKey {
         let (a, b) = self.into();
         (b, a).into()
+    }
+}
+
+impl DependantKey for ArcKey {
+    type Foreign = VertexKey;
+
+    fn rekey(self, rekeying: &Rekeying<Self::Foreign>) -> Result<Self, EntityError> {
+        let (a, b) = self.into();
+        let (a, b) = fool::zip((rekeying.get(&a).cloned(), rekeying.get(&b).cloned()))
+            .ok_or_else(|| EntityError::EntityNotFound)?;
+        Ok((a, b).into())
     }
 }
 

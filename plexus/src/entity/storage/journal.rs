@@ -1,19 +1,21 @@
 use fnv::FnvBuildHasher;
 use fool::BoolExt as _;
 use ordered_multimap::ListOrderedMultimap as LinkedMultiMap;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
 use crate::entity::storage::hash::FnvEntityMap;
 use crate::entity::storage::slot::{SlotEntityMap, SlotKey};
 use crate::entity::storage::{
-    AsStorage, AsStorageMut, Dispatch, Enumerate, Get, Insert, InsertWithKey, Key, Remove, Storage,
-    StorageObject,
+    AsStorage, AsStorageMut, DependantKey, Dispatch, EntityError, Enumerate, Get, Insert,
+    InsertWithKey, Key, Remove, Storage, StorageObject,
 };
 use crate::entity::{Entity, Payload};
 
-// TODO: Implement `Journaled` such that it does not mutate its source storage
-//       until the log is committed.
+// TODO: Should mutations be aggregated in the log? For a given key, the
+//       complete history may not be necessary.
+
+pub type Rekeying<K> = HashMap<K, K, FnvBuildHasher>;
 
 pub trait Unjournaled {}
 
@@ -54,6 +56,27 @@ where
             Mutation::Remove => None,
         }
     }
+
+    pub fn is_insert(&self) -> bool {
+        match *self {
+            Mutation::Insert(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_remove(&self) -> bool {
+        match *self {
+            Mutation::Remove => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_write(&self) -> bool {
+        match *self {
+            Mutation::Write(_) => true,
+            _ => false,
+        }
+    }
 }
 
 // TODO: The type parameter `T` is only used to implement `AsStorage`. Is there
@@ -67,6 +90,41 @@ where
     storage: T,
     log: LinkedMultiMap<E::Key, Mutation<E>>,
     state: T::State,
+}
+
+impl<T, E> Journaled<T, E>
+where
+    T: Default + Dispatch<E> + JournalState + Storage<E> + Unjournaled,
+    E: Entity<Storage = T>,
+{
+    pub fn abort(self) -> T {
+        self.storage
+    }
+}
+
+impl<T, E> Journaled<T, E>
+where
+    T: Default + Dispatch<E> + Insert<E> + JournalState + Storage<E> + Unjournaled,
+    E: Entity<Storage = T>,
+    E::Key: SyntheticKey<T::State>,
+{
+    pub fn commit_and_rekey(self) -> (T, Rekeying<E::Key>) {
+        todo!()
+    }
+}
+
+impl<T, E> Journaled<T, E>
+where
+    T: Default + Dispatch<E> + InsertWithKey<E> + JournalState + Storage<E> + Unjournaled,
+    E: Entity<Storage = T>,
+    E::Key: DependantKey,
+{
+    pub fn commit_with_rekeying(
+        self,
+        rekeying: &Rekeying<<E::Key as DependantKey>::Foreign>,
+    ) -> Result<T, EntityError> {
+        todo!()
+    }
 }
 
 // TODO: Is a general implementation possible? See `Journaled`.
@@ -150,7 +208,34 @@ where
     E: Entity<Storage = T>,
 {
     fn len(&self) -> usize {
-        todo!()
+        let n = self.storage.len();
+        // Count inserted entities in the log.
+        let p = self
+            .log
+            .pairs()
+            .filter_map(|(_, entry)| {
+                entry
+                    .into_iter()
+                    .rev()
+                    .filter(|mutation| !mutation.is_write())
+                    .next()
+                    .filter(|mutation| mutation.is_insert())
+            })
+            .count();
+        // Count removed entities in the log.
+        let q = self
+            .log
+            .pairs()
+            .filter_map(|(_, entry)| {
+                entry
+                    .into_iter()
+                    .rev()
+                    .filter(|mutation| !mutation.is_write())
+                    .next()
+                    .filter(|mutation| mutation.is_remove())
+            })
+            .count();
+        n + p - q
     }
 
     fn iter<'a>(&'a self) -> Box<dyn 'a + Iterator<Item = (E::Key, &E)>> {
@@ -209,7 +294,6 @@ where
     }
 
     fn get_mut(&mut self, key: &E::Key) -> Option<&mut E> {
-        // TODO: Should mutations be aggregated in the log?
         let entity = self.get(key).cloned();
         if let Some(entity) = entity {
             self.log.append(*key, Mutation::Write(entity));
