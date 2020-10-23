@@ -7,8 +7,8 @@ use std::hash::Hash;
 use crate::entity::storage::hash::FnvEntityMap;
 use crate::entity::storage::slot::{SlotEntityMap, SlotKey};
 use crate::entity::storage::{
-    AsStorage, AsStorageMut, DependantKey, Dispatch, EntityError, Enumerate, Get, Insert,
-    InsertWithKey, Key, Remove, Storage, StorageObject,
+    AsStorage, AsStorageMut, DependantKey, Dispatch, Enumerate, Get, Insert, InsertWithKey, Key,
+    Remove, Storage, StorageObject,
 };
 use crate::entity::{Entity, Payload};
 

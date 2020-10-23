@@ -5,7 +5,7 @@ use std::num::NonZeroU32;
 
 use crate::entity::storage::journal::{JournalState, SyntheticKey, Unjournaled};
 use crate::entity::storage::{
-    AsStorage, AsStorageMut, Dispatch, Enumerate, Get, InnerKey, Insert, IntrinsicStorage, Key,
+    AsStorage, AsStorageMut, Dispatch, Enumerate, Get, IndependentStorage, InnerKey, Insert, Key,
     Remove, StorageObject,
 };
 use crate::entity::{Entity, Payload};
@@ -66,7 +66,7 @@ where
     K: Key,
     InnerKey<K>: 'static + SlotKey,
 {
-    type Object = dyn 'static + IntrinsicStorage<E>;
+    type Object = dyn 'static + IndependentStorage<E>;
 }
 
 #[cfg(all(nightly, feature = "unstable"))]
@@ -77,7 +77,7 @@ where
     K: Key,
     InnerKey<K>: 'static + SlotKey,
 {
-    type Object<'a> where E: 'a = dyn 'a + IntrinsicStorage<E>;
+    type Object<'a> where E: 'a = dyn 'a + IndependentStorage<E>;
 }
 
 impl<E> Enumerate<E> for HopSlotMap<InnerKey<E::Key>, E>

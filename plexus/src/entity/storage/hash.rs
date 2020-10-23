@@ -4,7 +4,7 @@ use std::hash::{BuildHasher, Hash};
 
 use crate::entity::storage::journal::{JournalState, Unjournaled};
 use crate::entity::storage::{
-    AsStorage, AsStorageMut, Dispatch, Enumerate, ExtrinsicStorage, Get, InnerKey, InsertWithKey,
+    AsStorage, AsStorageMut, DependentStorage, Dispatch, Enumerate, Get, InnerKey, InsertWithKey,
     Key, Remove, StorageObject,
 };
 use crate::entity::{Entity, Payload};
@@ -43,7 +43,7 @@ where
     H: 'static + BuildHasher + Default,
     InnerKey<K>: 'static + Eq + Hash,
 {
-    type Object = dyn 'static + ExtrinsicStorage<E>;
+    type Object = dyn 'static + DependentStorage<E>;
 }
 
 #[cfg(all(nightly, feature = "unstable"))]
@@ -55,7 +55,7 @@ where
     H: 'static + BuildHasher + Default,
     InnerKey<K>: 'static + Eq + Hash,
 {
-    type Object<'a> where E: 'a = dyn 'a + ExtrinsicStorage<E>;
+    type Object<'a> where E: 'a = dyn 'a + DependentStorage<E>;
 }
 
 impl<E, H> Enumerate<E> for HashMap<InnerKey<E::Key>, E, H>

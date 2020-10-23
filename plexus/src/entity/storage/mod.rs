@@ -4,7 +4,7 @@ mod slot;
 
 use std::hash::Hash;
 
-use crate::entity::{Entity, EntityError, Payload};
+use crate::entity::{Entity, Payload};
 
 // TODO: Should this module be flattened or expose sub-modules?
 pub use crate::entity::storage::hash::FnvEntityMap;
@@ -119,26 +119,26 @@ where
 {
 }
 
-pub trait ExtrinsicStorage<E>: InsertWithKey<E> + Storage<E>
+pub trait DependentStorage<E>: InsertWithKey<E> + Storage<E>
 where
     E: Entity,
 {
 }
 
-impl<T, E> ExtrinsicStorage<E> for T
+impl<T, E> DependentStorage<E> for T
 where
     T: InsertWithKey<E> + Storage<E>,
     E: Entity,
 {
 }
 
-pub trait IntrinsicStorage<E>: Insert<E> + Storage<E>
+pub trait IndependentStorage<E>: Insert<E> + Storage<E>
 where
     E: Entity,
 {
 }
 
-impl<T, E> IntrinsicStorage<E> for T
+impl<T, E> IndependentStorage<E> for T
 where
     T: Insert<E> + Storage<E>,
     E: Entity,
