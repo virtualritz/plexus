@@ -26,7 +26,7 @@ pub trait Key: Copy + Eq + Hash + Sized {
     fn into_inner(self) -> Self::Inner;
 }
 
-pub trait DependantKey: Key {
+pub trait DependentKey: Key {
     type Foreign: Key;
 
     fn rekey(self, rekeying: &Rekeying<Self::Foreign>) -> Self;

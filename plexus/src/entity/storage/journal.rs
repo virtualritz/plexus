@@ -7,7 +7,7 @@ use std::hash::Hash;
 use crate::entity::storage::hash::FnvEntityMap;
 use crate::entity::storage::slot::{SlotEntityMap, SlotKey};
 use crate::entity::storage::{
-    AsStorage, AsStorageMut, DependantKey, Dispatch, Enumerate, Get, Insert, InsertWithKey, Key,
+    AsStorage, AsStorageMut, DependentKey, Dispatch, Enumerate, Get, Insert, InsertWithKey, Key,
     Remove, Storage, StorageObject,
 };
 use crate::entity::{Entity, Payload};
@@ -136,11 +136,11 @@ impl<T, E> Journaled<T, E>
 where
     T: Default + Dispatch<E> + InsertWithKey<E> + JournalState + Storage<E> + Unjournaled,
     E: Entity<Storage = T>,
-    E::Key: DependantKey,
+    E::Key: DependentKey,
 {
     pub fn commit_with_rekeying(
         self,
-        rekeying: &Rekeying<<E::Key as DependantKey>::Foreign>,
+        rekeying: &Rekeying<<E::Key as DependentKey>::Foreign>,
     ) -> (T, Rekeying<E::Key>) {
         let Journaled {
             mut storage,
@@ -402,7 +402,7 @@ mod tests {
     use slotmap::DefaultKey;
 
     use crate::entity::storage::{
-        DependantKey, FnvEntityMap, Get, Insert, Journaled, Key, Rekeying, SlotEntityMap,
+        DependentKey, FnvEntityMap, Get, Insert, Journaled, Key, Rekeying, SlotEntityMap,
     };
     use crate::entity::Entity;
 
@@ -432,7 +432,7 @@ mod tests {
     #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
     struct LinkKey(NodeKey, NodeKey);
 
-    impl DependantKey for LinkKey {
+    impl DependentKey for LinkKey {
         type Foreign = NodeKey;
 
         fn rekey(self, rekeying: &Rekeying<Self::Foreign>) -> Self {

@@ -11,7 +11,7 @@ use theon::{AsPosition, AsPositionMut};
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
 use crate::entity::storage::{
-    AsStorage, AsStorageMut, DependantKey, FnvEntityMap, Key, Rekeying, SlotEntityMap,
+    AsStorage, AsStorageMut, DependentKey, FnvEntityMap, Key, Rekeying, SlotEntityMap,
 };
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::entity::{Entity, Payload};
@@ -112,7 +112,7 @@ impl ArcKey {
     }
 }
 
-impl DependantKey for ArcKey {
+impl DependentKey for ArcKey {
     type Foreign = VertexKey;
 
     fn rekey(self, rekeying: &Rekeying<Self::Foreign>) -> Self {
