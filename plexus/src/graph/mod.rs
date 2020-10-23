@@ -482,6 +482,38 @@ impl<K> From<usize> for Selector<K> {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum GraphKey {
+    Vertex(VertexKey),
+    Arc(ArcKey),
+    Edge(EdgeKey),
+    Face(FaceKey),
+}
+
+impl From<VertexKey> for GraphKey {
+    fn from(key: VertexKey) -> Self {
+        GraphKey::Vertex(key)
+    }
+}
+
+impl From<ArcKey> for GraphKey {
+    fn from(key: ArcKey) -> Self {
+        GraphKey::Arc(key)
+    }
+}
+
+impl From<EdgeKey> for GraphKey {
+    fn from(key: EdgeKey) -> Self {
+        GraphKey::Edge(key)
+    }
+}
+
+impl From<FaceKey> for GraphKey {
+    fn from(key: FaceKey) -> Self {
+        GraphKey::Face(key)
+    }
+}
+
 /// [Half-edge graph][dcel] representation of a polygonal mesh.
 ///
 /// `MeshGraph`s form a polygonal mesh from four interconnected entities:
