@@ -77,6 +77,15 @@ where
     T: Default + Dispatch<E> + JournalState + Storage<E> + Unjournaled,
     E: Entity<Storage = T>,
 {
+    pub fn transact(storage: T) -> Self {
+        let state = storage.state();
+        Journaled {
+            storage,
+            log: Default::default(),
+            state,
+        }
+    }
+
     pub fn abort(self) -> T {
         self.storage
     }
@@ -132,7 +141,7 @@ where
     pub fn commit_with_rekeying(
         self,
         rekeying: &Rekeying<<E::Key as DependantKey>::Foreign>,
-    ) -> Result<(T, Rekeying<E::Key>), EntityError> {
+    ) -> (T, Rekeying<E::Key>) {
         let Journaled {
             mut storage,
             mut log,
@@ -159,7 +168,7 @@ where
                 (key, rekey)
             })
             .collect();
-        Ok((storage, rekeying))
+        (storage, rekeying)
     }
 }
 
@@ -383,5 +392,105 @@ where
             self.log.append(*key, Mutation::Remove);
         }
         occupant
+    }
+}
+
+// TODO: Refactor testing entities (`Node` and `Link`) into a shared testing
+//       module.
+#[cfg(test)]
+mod tests {
+    use slotmap::DefaultKey;
+
+    use crate::entity::storage::{
+        DependantKey, FnvEntityMap, Get, Insert, Journaled, Key, Rekeying, SlotEntityMap,
+    };
+    use crate::entity::Entity;
+
+    #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+    struct NodeKey(DefaultKey);
+
+    impl Key for NodeKey {
+        type Inner = DefaultKey;
+
+        fn from_inner(key: Self::Inner) -> Self {
+            NodeKey(key)
+        }
+
+        fn into_inner(self) -> Self::Inner {
+            self.0
+        }
+    }
+
+    #[derive(Clone, Copy, Default)]
+    struct Node;
+
+    impl Entity for Node {
+        type Key = NodeKey;
+        type Storage = SlotEntityMap<Self>;
+    }
+
+    #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+    struct LinkKey(NodeKey, NodeKey);
+
+    impl DependantKey for LinkKey {
+        type Foreign = NodeKey;
+
+        fn rekey(self, rekeying: &Rekeying<Self::Foreign>) -> Self {
+            let LinkKey(a, b) = self;
+            let a = rekeying.get(&a).cloned().unwrap_or(a);
+            let b = rekeying.get(&b).cloned().unwrap_or(b);
+            LinkKey(a, b)
+        }
+    }
+
+    impl Key for LinkKey {
+        type Inner = (NodeKey, NodeKey);
+
+        fn from_inner(key: Self::Inner) -> Self {
+            LinkKey(key.0, key.1)
+        }
+
+        fn into_inner(self) -> Self::Inner {
+            (self.0, self.1)
+        }
+    }
+
+    #[derive(Clone, Copy, Default)]
+    struct Link;
+
+    impl Entity for Link {
+        type Key = LinkKey;
+        type Storage = FnvEntityMap<Self>;
+    }
+
+    #[test]
+    fn independent_insert_abort() {
+        let mut storage = SlotEntityMap::default();
+        let k1 = Insert::insert(&mut storage, Node::default());
+
+        let mut storage = Journaled::transact(storage);
+        let k2 = Insert::insert(&mut storage, Node::default());
+        assert!(Get::get(&storage, &k1).is_some());
+        assert!(Get::get(&storage, &k2).is_some());
+
+        let storage = storage.abort();
+        assert!(Get::get(&storage, &k1).is_some());
+        assert!(Get::get(&storage, &k2).is_none());
+    }
+
+    #[test]
+    fn independent_insert_commit() {
+        let mut storage = SlotEntityMap::default();
+        let k1 = Insert::insert(&mut storage, Node::default());
+
+        let mut storage = Journaled::transact(storage);
+        let k2 = Insert::insert(&mut storage, Node::default());
+        assert!(Get::get(&storage, &k1).is_some());
+        assert!(Get::get(&storage, &k2).is_some());
+
+        let (storage, rekeying) = storage.commit_and_rekey();
+        let k2 = rekeying.get(&k2).unwrap();
+        assert!(Get::get(&storage, &k1).is_some());
+        assert!(Get::get(&storage, &k2).is_some());
     }
 }

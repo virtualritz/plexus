@@ -8,7 +8,7 @@ use crate::entity::{Entity, EntityError, Payload};
 
 // TODO: Should this module be flattened or expose sub-modules?
 pub use crate::entity::storage::hash::FnvEntityMap;
-pub use crate::entity::storage::journal::{Rekeying, Unjournaled};
+pub use crate::entity::storage::journal::{Journaled, Rekeying, Unjournaled};
 pub use crate::entity::storage::slot::SlotEntityMap;
 
 #[cfg(not(all(nightly, feature = "unstable")))]
