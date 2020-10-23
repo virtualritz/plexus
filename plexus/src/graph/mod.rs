@@ -364,7 +364,7 @@ impl From<EntityError> for GraphError {
     fn from(error: EntityError) -> Self {
         match error {
             EntityError::EntityNotFound => GraphError::TopologyNotFound,
-            EntityError::Geometry => GraphError::Geometry,
+            EntityError::Data => GraphError::Geometry,
         }
     }
 }

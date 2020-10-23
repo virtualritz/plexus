@@ -12,8 +12,8 @@ use crate::entity::storage::{Dispatch, Key, Storage, Unjournaled};
 pub enum EntityError {
     #[error("required entity not found")]
     EntityNotFound,
-    #[error("geometric operation failed")]
-    Geometry,
+    #[error("data operation failed")]
+    Data,
 }
 
 #[cfg(not(all(nightly, feature = "unstable")))]
