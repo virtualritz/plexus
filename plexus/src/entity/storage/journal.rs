@@ -13,7 +13,8 @@ use crate::entity::storage::{
 use crate::entity::{Entity, Payload};
 
 // TODO: Should mutations be aggregated in the log? For a given key, the
-//       complete history may not be necessary.
+//       complete history may not be necessary. A `HashMap` or similar data
+//       structure may be sufficient for representing the log.
 
 pub type Rekeying<K> = HashMap<K, K, FnvBuildHasher>;
 
@@ -93,34 +94,31 @@ where
             mut log,
             ..
         } = self;
-        let mut rekeying = Rekeying::<_>::default();
-        for (key, mutation) in log
+        let rekeying: Rekeying<_> = log
             .drain_pairs()
             .flat_map(|(key, mut entry)| entry.next_back().map(|mutation| (key, mutation)))
-        {
-            // TODO: Should unmapped keys be inserted into the rekeying? Note
-            //       that removing such keys may complicate rekeying of
-            //       dependent keys.
-            let rekey = match mutation {
-                Mutation::Insert(entity) | Mutation::Write(entity) => {
-                    if let Some(occupant) = storage.get_mut(&key) {
-                        *occupant = entity;
+            .map(|(key, mutation)| {
+                // TODO: Should unmapped keys be inserted into the rekeying? Note
+                //       that removing such keys may complicate rekeying of
+                //       dependent keys.
+                let rekey = match mutation {
+                    Mutation::Insert(entity) | Mutation::Write(entity) => {
+                        if let Some(occupant) = storage.get_mut(&key) {
+                            *occupant = entity;
+                            key
+                        }
+                        else {
+                            storage.insert(entity)
+                        }
+                    }
+                    Mutation::Remove => {
+                        storage.remove(&key);
                         key
                     }
-                    else {
-                        storage.insert(entity)
-                    }
-                }
-                Mutation::Remove => {
-                    // This key may only exist in the log i.e., if an entity is
-                    // inserted and then removed while journaled. In that case,
-                    // this is a no-op.
-                    storage.remove(&key);
-                    key
-                }
-            };
-            rekeying.insert(key, rekey);
-        }
+                };
+                (key, rekey)
+            })
+            .collect();
         (storage, rekeying)
     }
 }
@@ -134,8 +132,34 @@ where
     pub fn commit_with_rekeying(
         self,
         rekeying: &Rekeying<<E::Key as DependantKey>::Foreign>,
-    ) -> Result<T, EntityError> {
-        todo!()
+    ) -> Result<(T, Rekeying<E::Key>), EntityError> {
+        let Journaled {
+            mut storage,
+            mut log,
+            ..
+        } = self;
+        let rekeying: Rekeying<_> = log
+            .drain_pairs()
+            .flat_map(|(key, mut entry)| entry.next_back().map(|mutation| (key, mutation)))
+            .map(|(key, mutation)| {
+                let rekey = key.rekey(rekeying);
+                match mutation {
+                    Mutation::Insert(entity) | Mutation::Write(entity) => {
+                        if let Some(occupant) = storage.get_mut(&rekey) {
+                            *occupant = entity;
+                        }
+                        else {
+                            storage.insert_with_key(&rekey, entity);
+                        }
+                    }
+                    Mutation::Remove => {
+                        storage.remove(&rekey);
+                    }
+                }
+                (key, rekey)
+            })
+            .collect();
+        Ok((storage, rekeying))
     }
 }
 

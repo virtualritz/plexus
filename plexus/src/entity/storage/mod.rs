@@ -29,7 +29,7 @@ pub trait Key: Copy + Eq + Hash + Sized {
 pub trait DependantKey: Key {
     type Foreign: Key;
 
-    fn rekey(self, rekeying: &Rekeying<Self::Foreign>) -> Result<Self, EntityError>;
+    fn rekey(self, rekeying: &Rekeying<Self::Foreign>) -> Self;
 }
 
 #[cfg(not(all(nightly, feature = "unstable")))]

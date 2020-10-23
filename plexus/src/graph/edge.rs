@@ -14,7 +14,7 @@ use crate::entity::storage::{
     AsStorage, AsStorageMut, DependantKey, FnvEntityMap, Key, Rekeying, SlotEntityMap,
 };
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
-use crate::entity::{Entity, EntityError, Payload};
+use crate::entity::{Entity, Payload};
 use crate::graph::data::{Data, GraphData, Parametric};
 use crate::graph::face::{Face, FaceKey, FaceOrphan, FaceView, Ring};
 use crate::graph::geometry::{ArcNormal, EdgeMidpoint, VertexPosition};
@@ -115,11 +115,11 @@ impl ArcKey {
 impl DependantKey for ArcKey {
     type Foreign = VertexKey;
 
-    fn rekey(self, rekeying: &Rekeying<Self::Foreign>) -> Result<Self, EntityError> {
+    fn rekey(self, rekeying: &Rekeying<Self::Foreign>) -> Self {
         let (a, b) = self.into();
-        let (a, b) = fool::zip((rekeying.get(&a).cloned(), rekeying.get(&b).cloned()))
-            .ok_or_else(|| EntityError::EntityNotFound)?;
-        Ok((a, b).into())
+        let a = rekeying.get(&a).cloned().unwrap_or(a);
+        let b = rekeying.get(&b).cloned().unwrap_or(b);
+        (a, b).into()
     }
 }
 
