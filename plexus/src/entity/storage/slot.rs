@@ -27,6 +27,9 @@ where
     K: Key,
     InnerKey<K>: SlotKey,
 {
+    // Key synthesis wraps the index within the interval [`floor`, `u32::MAX`].
+    // Each overflow is carried into the version twice (the version is
+    // incremented by two).
     fn synthesize(state: &mut State) -> Self {
         struct SyntheticKeyData {
             _index: u32,
@@ -38,20 +41,24 @@ where
             index,
             version,
         } = state;
-        unsafe {
-            let key = SyntheticKeyData {
-                _index: *index,
-                _version: NonZeroU32::new(*version).expect("zero version in synthesized key"),
-            };
-            *index = match index.overflowing_add(1) {
-                (index, false) => index,
-                (_, true) => {
-                    *version = version.checked_add(2).expect("exhausted synthesized keys");
-                    *floor
-                }
-            };
-            Key::from_inner(mem::transmute::<_, KeyData>(key).into())
-        }
+        let key = SyntheticKeyData {
+            _index: *index,
+            _version: NonZeroU32::new(*version).expect("zero version in synthesized key"),
+        };
+        // An index of `u32::MAX` is considered a null key, but this condition
+        // is not checked in `slotmap`.
+        *index = match index.overflowing_add(1) {
+            (index, false) => index,
+            (_, true) => {
+                *version = version.checked_add(2).expect("exhausted synthesized keys");
+                *floor
+            }
+        };
+        // This is safe, because `SyntheticKeyData` is identical to `KeyData`.
+        // Moreover, the `slotmap` dependency is pinned to a specific version,
+        // so this type will not change unexpectedly. Note that malformed keys
+        // are safe, though they can cause logical errors.
+        unsafe { Key::from_inner(mem::transmute::<_, KeyData>(key).into()) }
     }
 }
 
@@ -157,6 +164,10 @@ where
 {
     type State = State;
 
+    // This state is used solely for key synthesis. Each key contains index and
+    // version data. The state is based on the state of a slot map (namely its
+    // capacity), which is used to synthesize keys that do not conflict with
+    // existing keys in the map.
     fn state(&self) -> Self::State {
         // TODO: Is this recoverable? Is it useful to propagate such an error?
         let floor = u32::try_from(self.capacity())
