@@ -12,10 +12,6 @@ use crate::entity::storage::{
 };
 use crate::entity::{Entity, Payload};
 
-// TODO: Should mutations be aggregated in the log? For a given key, the
-//       complete history may not be necessary. A `HashMap` or similar data
-//       structure may be sufficient for representing the log.
-
 pub type Rekeying<K> = HashMap<K, K, FnvBuildHasher>;
 
 pub trait Unjournaled {}
@@ -59,6 +55,9 @@ where
     }
 }
 
+// TODO: Should mutations be aggregated in the log? For a given key, the
+//       complete history may not be necessary. A `HashMap` or similar data
+//       structure may be sufficient for representing the log.
 // TODO: The type parameter `T` is only used to implement `AsStorage`. Is there
 //       a way to write a generic implementation that also allows for an
 //       implicit conversion from `&Journaled<_, _>` to a storage object?
