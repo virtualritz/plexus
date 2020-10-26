@@ -435,10 +435,12 @@ mod tests {
 
         let mut storage = Journaled::transact(storage);
         let k2 = Insert::insert(&mut storage, Node::default());
-        let _k3 = Insert::insert(&mut storage, Node::default());
+        let k3 = Insert::insert(&mut storage, Node::default());
         assert_eq!(3, Enumerate::len(&storage));
 
         // Remove an entity that is only present in the log.
+        Get::get_mut(&mut storage, &k2).unwrap();
+        Get::get_mut(&mut storage, &k3).unwrap();
         Remove::remove(&mut storage, &k2);
         assert_eq!(2, Enumerate::len(&storage));
         // Remove an entity that is only present in the underlying storage.
