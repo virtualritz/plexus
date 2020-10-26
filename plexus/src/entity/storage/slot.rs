@@ -15,28 +15,39 @@ pub use slotmap::Key as SlotKey;
 
 pub type SlotEntityMap<E> = HopSlotMap<InnerKey<<E as Entity>::Key>, E>;
 
+pub struct State {
+    floor: u32,
+    index: u32,
+    version: u32,
+}
+
 // See also the implementation of `JournalState` for `HopSlotMap`.
-impl<K> SyntheticKey<(u32, u32)> for K
+impl<K> SyntheticKey<State> for K
 where
     K: Key,
     InnerKey<K>: SlotKey,
 {
-    fn synthesize(state: &mut (u32, u32)) -> Self {
-        struct SyntheticKey {
+    fn synthesize(state: &mut State) -> Self {
+        struct SyntheticKeyData {
             _index: u32,
             _version: NonZeroU32,
         }
 
+        let State {
+            ref floor,
+            index,
+            version,
+        } = state;
         unsafe {
-            let key = SyntheticKey {
-                _index: state.0,
-                _version: NonZeroU32::new(state.1).expect("zero version in synthesized key"),
+            let key = SyntheticKeyData {
+                _index: *index,
+                _version: NonZeroU32::new(*version).expect("zero version in synthesized key"),
             };
-            state.0 = match state.0.overflowing_add(1) {
+            *index = match index.overflowing_add(1) {
                 (index, false) => index,
-                (index, true) => {
-                    state.1 = state.1.checked_add(2).expect("exhausted synthesized keys");
-                    index
+                (_, true) => {
+                    *version = version.checked_add(2).expect("exhausted synthesized keys");
+                    *floor
                 }
             };
             Key::from_inner(mem::transmute::<_, KeyData>(key).into())
@@ -144,16 +155,21 @@ where
     E: Entity,
     InnerKey<E::Key>: SlotKey,
 {
-    type State = (u32, u32);
+    type State = State;
 
     fn state(&self) -> Self::State {
         // TODO: Is this recoverable? Is it useful to propagate such an error?
-        let index = u32::try_from(self.capacity())
+        let floor = u32::try_from(self.capacity())
             .unwrap()
             .checked_add(1)
             .expect("insufficient capacity for journaling");
+        let index = floor;
         let version = 1;
-        (index, version)
+        State {
+            floor,
+            index,
+            version,
+        }
     }
 }
 
