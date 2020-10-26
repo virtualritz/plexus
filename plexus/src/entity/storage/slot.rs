@@ -189,3 +189,29 @@ where
     T: Copy,
 {
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::entity::storage::journal::SyntheticKey;
+    use crate::entity::storage::slot::State;
+    use crate::entity::storage::tests::NodeKey;
+
+    // TODO: This test exercises implementation details. Is there a better way
+    //       to test key synthesis in general?
+    #[test]
+    fn synthetic_key_index_overflow() {
+        let mut state = State {
+            floor: u32::MAX - 1,
+            index: u32::MAX - 1,
+            version: 1,
+        };
+
+        let _ = NodeKey::synthesize(&mut state);
+        assert_eq!(u32::MAX, state.index);
+        assert_eq!(1, state.version);
+
+        let _ = NodeKey::synthesize(&mut state);
+        assert_eq!(u32::MAX - 1, state.index);
+        assert_ne!(1, state.version);
+    }
+}

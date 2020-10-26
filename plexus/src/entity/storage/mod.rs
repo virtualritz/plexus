@@ -216,3 +216,68 @@ pub trait AsStorageOf {
 }
 
 impl<T> AsStorageOf for T {}
+
+#[cfg(test)]
+mod tests {
+    use slotmap::DefaultKey;
+
+    use crate::entity::storage::{DependentKey, FnvEntityMap, Key, Rekeying, SlotEntityMap};
+    use crate::entity::Entity;
+
+    #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+    pub struct NodeKey(DefaultKey);
+
+    impl Key for NodeKey {
+        type Inner = DefaultKey;
+
+        fn from_inner(key: Self::Inner) -> Self {
+            NodeKey(key)
+        }
+
+        fn into_inner(self) -> Self::Inner {
+            self.0
+        }
+    }
+
+    #[derive(Clone, Copy, Default)]
+    pub struct Node;
+
+    impl Entity for Node {
+        type Key = NodeKey;
+        type Storage = SlotEntityMap<Self>;
+    }
+
+    #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+    pub struct LinkKey(NodeKey, NodeKey);
+
+    impl DependentKey for LinkKey {
+        type Foreign = NodeKey;
+
+        fn rekey(self, rekeying: &Rekeying<Self::Foreign>) -> Self {
+            let LinkKey(a, b) = self;
+            let a = rekeying.get(&a).cloned().unwrap_or(a);
+            let b = rekeying.get(&b).cloned().unwrap_or(b);
+            LinkKey(a, b)
+        }
+    }
+
+    impl Key for LinkKey {
+        type Inner = (NodeKey, NodeKey);
+
+        fn from_inner(key: Self::Inner) -> Self {
+            LinkKey(key.0, key.1)
+        }
+
+        fn into_inner(self) -> Self::Inner {
+            (self.0, self.1)
+        }
+    }
+
+    #[derive(Clone, Copy, Default)]
+    pub struct Link;
+
+    impl Entity for Link {
+        type Key = LinkKey;
+        type Storage = FnvEntityMap<Self>;
+    }
+}
