@@ -1,8 +1,6 @@
 use slotmap::hop::HopSlotMap;
 use slotmap::KeyData;
 use std::convert::TryFrom;
-use std::mem;
-use std::num::NonZeroU32;
 
 use crate::entity::storage::journal::{JournalState, SyntheticKey, Unjournaled};
 use crate::entity::storage::{
@@ -31,20 +29,17 @@ where
     // Each overflow is carried into the version twice (the version is
     // incremented by two).
     fn synthesize(state: &mut State) -> Self {
-        struct SyntheticKeyData {
-            _index: u32,
-            _version: NonZeroU32,
-        }
-
         let State {
             ref floor,
             index,
             version,
         } = state;
-        let key = SyntheticKeyData {
-            _index: *index,
-            _version: NonZeroU32::new(*version).expect("zero version in synthesized key"),
-        };
+        // This encoding depends on the implementation details of
+        // `KeyData::from_ffi`. The dependency on `slotmap` is pinned to a
+        // specific version; upgrading `slotmap` may require changing this code.
+        // Note that the index is meaningful and is constructed in such a way
+        // that synthetic keys never conflict with existing keys in the map.
+        let synthetic = (u64::from(*version) << 32) | u64::from(*index);
         // An index of `u32::MAX` is considered a null key, but this condition
         // is not checked in `slotmap`.
         *index = match index.overflowing_add(1) {
@@ -54,11 +49,9 @@ where
                 *floor
             }
         };
-        // This is safe, because `SyntheticKeyData` is identical to `KeyData`.
-        // Moreover, the `slotmap` dependency is pinned to a specific version,
-        // so this type will not change unexpectedly. Note that malformed keys
-        // are safe, though they can cause logical errors.
-        unsafe { Key::from_inner(mem::transmute::<_, KeyData>(key).into()) }
+        // `KeyData::from_ffi` is defensive and will modify version data such
+        // that it is odd (representing an occupied slot).
+        Key::from_inner(KeyData::from_ffi(synthetic).into())
     }
 }
 
