@@ -582,7 +582,8 @@ where
     /// Gets an iterator of immutable views over the vertices in the graph.
     pub fn vertices(&self) -> impl Iterator<Item = VertexView<&Self>> {
         self.as_storage_of::<Vertex<_>>()
-            .keys()
+            .iter()
+            .map(|(key, _)| key)
             .map(move |key| View::bind_unchecked(self, key))
             .map(From::from)
     }
@@ -614,7 +615,8 @@ where
     /// Gets an iterator of immutable views over the arcs in the graph.
     pub fn arcs(&self) -> impl Iterator<Item = ArcView<&Self>> {
         self.as_storage_of::<Arc<_>>()
-            .keys()
+            .iter()
+            .map(|(key, _)| key)
             .map(move |key| View::bind_unchecked(self, key))
             .map(From::from)
     }
@@ -646,7 +648,8 @@ where
     /// Gets an iterator of immutable views over the edges in the graph.
     pub fn edges(&self) -> impl Iterator<Item = EdgeView<&Self>> {
         self.as_storage_of::<Edge<_>>()
-            .keys()
+            .iter()
+            .map(|(key, _)| key)
             .map(move |key| View::bind_unchecked(self, key))
             .map(From::from)
     }
@@ -678,7 +681,8 @@ where
     /// Gets an iterator of immutable views over the faces in the graph.
     pub fn faces(&self) -> impl Iterator<Item = FaceView<&Self>> {
         self.as_storage_of::<Face<_>>()
-            .keys()
+            .iter()
+            .map(|(key, _)| key)
             .map(move |key| View::bind_unchecked(self, key))
             .map(From::from)
     }
@@ -742,7 +746,11 @@ where
         //       any of these conditions aren't possible? This should work a bit
         //       better than using `FaceView::triangulate` until triangulation
         //       is reworked.
-        let keys = self.as_storage_of::<Face<_>>().keys().collect::<Vec<_>>();
+        let keys = self
+            .as_storage_of::<Face<_>>()
+            .iter()
+            .map(|(key, _)| key)
+            .collect::<Vec<_>>();
         for key in keys {
             let mut face = self.face_mut(key).unwrap();
             let mut offset = 0;
@@ -884,7 +892,8 @@ where
     pub fn disjoint_subgraph_vertices(&self) -> impl ExactSizeIterator<Item = VertexView<&Self>> {
         let keys = self
             .as_storage_of::<Vertex<_>>()
-            .keys()
+            .iter()
+            .map(|(key, _)| key)
             .collect::<HashSet<_>>();
         let mut subkeys = HashSet::with_capacity(self.vertex_count());
         let mut vertices = SmallVec::<[VertexView<_>; 4]>::new();

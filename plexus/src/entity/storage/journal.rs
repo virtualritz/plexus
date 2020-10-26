@@ -317,11 +317,6 @@ where
                 })),
         )
     }
-
-    fn keys<'a>(&'a self) -> Box<dyn 'a + Iterator<Item = E::Key>> {
-        // TODO: This boxes the iterator twice.
-        Box::new(self.iter().map(|(key, _)| key))
-    }
 }
 
 impl<T, E> Get<E> for Journaled<T, E>

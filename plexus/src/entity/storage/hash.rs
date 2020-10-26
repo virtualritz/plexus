@@ -84,10 +84,6 @@ where
                 .map(|(key, entity)| (E::Key::from_inner(*key), entity.get_mut())),
         )
     }
-
-    fn keys<'a>(&'a self) -> Box<dyn 'a + Iterator<Item = E::Key>> {
-        Box::new(self.keys().map(|key| E::Key::from_inner(*key)))
-    }
 }
 
 impl<E, H> Get<E> for HashMap<InnerKey<E::Key>, E, H>

@@ -68,8 +68,6 @@ where
     fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + Iterator<Item = (E::Key, &mut E::Data)>>
     where
         E: Payload;
-
-    fn keys<'a>(&'a self) -> Box<dyn 'a + Iterator<Item = E::Key>>;
 }
 
 pub trait Get<E>

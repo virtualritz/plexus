@@ -105,10 +105,6 @@ where
                 .map(|(key, entity)| (E::Key::from_inner(key), entity.get_mut())),
         )
     }
-
-    fn keys<'a>(&'a self) -> Box<dyn 'a + Iterator<Item = E::Key>> {
-        Box::new(self.keys().map(E::Key::from_inner))
-    }
 }
 
 impl<E> Get<E> for HopSlotMap<InnerKey<E::Key>, E>
