@@ -396,7 +396,8 @@ mod tests {
     use slotmap::DefaultKey;
 
     use crate::entity::storage::{
-        DependentKey, FnvEntityMap, Get, Insert, Journaled, Key, Rekeying, SlotEntityMap,
+        DependentKey, Enumerate, FnvEntityMap, Get, Insert, Journaled, Key, Rekeying, Remove,
+        SlotEntityMap,
     };
     use crate::entity::Entity;
 
@@ -458,7 +459,7 @@ mod tests {
     }
 
     #[test]
-    fn independent_insert_abort() {
+    fn insert_abort() {
         let mut storage = SlotEntityMap::default();
         let k1 = Insert::insert(&mut storage, Node::default());
 
@@ -472,6 +473,8 @@ mod tests {
         assert!(Get::get(&storage, &k2).is_none());
     }
 
+    // TODO: Write a similar test for dependent storage (using
+    //       `commit_with_rekeying`).
     #[test]
     fn independent_insert_commit() {
         let mut storage = SlotEntityMap::default();
@@ -486,5 +489,27 @@ mod tests {
         let k2 = rekeying.get(&k2).unwrap();
         assert!(Get::get(&storage, &k1).is_some());
         assert!(Get::get(&storage, &k2).is_some());
+    }
+
+    #[test]
+    fn enumerate() {
+        let mut storage = SlotEntityMap::default();
+        let k1 = Insert::insert(&mut storage, Node::default());
+        assert_eq!(1, Enumerate::len(&storage));
+
+        let mut storage = Journaled::transact(storage);
+        let k2 = Insert::insert(&mut storage, Node::default());
+        let _k3 = Insert::insert(&mut storage, Node::default());
+        assert_eq!(3, Enumerate::len(&storage));
+
+        // Remove an entity that is only present in the log.
+        Remove::remove(&mut storage, &k2);
+        assert_eq!(2, Enumerate::len(&storage));
+        // Remove an entity that is only present in the underlying storage.
+        Remove::remove(&mut storage, &k1);
+        assert_eq!(1, Enumerate::len(&storage));
+
+        let storage = storage.abort();
+        assert_eq!(1, Enumerate::len(&storage));
     }
 }
