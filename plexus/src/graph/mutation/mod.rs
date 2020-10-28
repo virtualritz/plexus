@@ -3,9 +3,11 @@ pub mod face;
 pub mod path;
 pub mod vertex;
 
+use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
-use crate::entity::storage::{AsStorage, StorageObject};
+use crate::entity::storage::{AsStorage, AsStorageMut, Journaled, StorageObject};
+use crate::entity::Entity;
 use crate::graph::core::OwnedCore;
 use crate::graph::data::{Data, Parametric};
 use crate::graph::edge::{Arc, Edge};
@@ -14,6 +16,14 @@ use crate::graph::mutation::face::FaceMutation;
 use crate::graph::vertex::Vertex;
 use crate::graph::{GraphData, GraphError};
 use crate::transact::Transact;
+
+// TODO: The `Transact` trait provides no output on failure. This prevents the
+//       direct restoration of a graph that has been journaled. Enhance the
+//       `Transact` trait to support this.
+// TODO: The mutation API exposes raw entities (see removals). It would be ideal
+//       if those types need not be exposed at all, since they have limited
+//       utility to users. Is it possible to expose user data instead of
+//       entities in these APIs?
 
 /// Marker trait for graph representations that promise to be in a consistent
 /// state.
@@ -32,23 +42,66 @@ impl<'a, T> Consistent for &'a T where T: Consistent {}
 
 impl<'a, T> Consistent for &'a mut T where T: Consistent {}
 
-/// Graph mutation.
-pub struct Mutation<M>
+// TODO: Can a single type parameter implementing this trait be used in
+//       `Mutation`?
+pub trait Mode<G>
 where
-    M: Consistent + From<OwnedCore<Data<M>>> + Parametric + Into<OwnedCore<Data<M>>>,
+    G: GraphData,
 {
-    inner: FaceMutation<M>,
+    type VertexStorage: AsStorageMut<Vertex<G>>;
+    type ArcStorage: AsStorageMut<Arc<G>>;
+    type EdgeStorage: AsStorageMut<Edge<G>>;
+    type FaceStorage: AsStorageMut<Face<G>>;
 }
 
-impl<M, G> Mutation<M>
+pub struct Immediate<G> {
+    phantom: PhantomData<G>,
+}
+
+impl<G> Mode<G> for Immediate<G>
 where
+    G: GraphData,
+{
+    type VertexStorage = <Vertex<G> as Entity>::Storage;
+    type ArcStorage = <Arc<G> as Entity>::Storage;
+    type EdgeStorage = <Edge<G> as Entity>::Storage;
+    type FaceStorage = <Face<G> as Entity>::Storage;
+}
+
+pub struct Transacted<G> {
+    phantom: PhantomData<G>,
+}
+
+impl<G> Mode<G> for Transacted<G>
+where
+    G: GraphData,
+{
+    type VertexStorage = Journaled<<Vertex<G> as Entity>::Storage, Vertex<G>>;
+    type ArcStorage = Journaled<<Arc<G> as Entity>::Storage, Arc<G>>;
+    type EdgeStorage = Journaled<<Edge<G> as Entity>::Storage, Edge<G>>;
+    type FaceStorage = Journaled<<Face<G> as Entity>::Storage, Face<G>>;
+}
+
+/// Graph mutation.
+pub struct Mutation<P, M>
+where
+    P: Mode<Data<M>>,
+    M: Consistent + From<OwnedCore<Data<M>>> + Parametric + Into<OwnedCore<Data<M>>>,
+{
+    inner: FaceMutation<P, M>,
+}
+
+impl<P, M, G> Mutation<P, M>
+where
+    P: Mode<G>,
     M: Consistent + From<OwnedCore<G>> + Parametric<Data = G> + Into<OwnedCore<G>>,
     G: GraphData,
 {
 }
 
-impl<M, G> AsRef<Self> for Mutation<M>
+impl<P, M, G> AsRef<Self> for Mutation<P, M>
 where
+    P: Mode<G>,
     M: Consistent + From<OwnedCore<G>> + Parametric<Data = G> + Into<OwnedCore<G>>,
     G: GraphData,
 {
@@ -57,8 +110,9 @@ where
     }
 }
 
-impl<M, G> AsMut<Self> for Mutation<M>
+impl<P, M, G> AsMut<Self> for Mutation<P, M>
 where
+    P: Mode<G>,
     M: Consistent + From<OwnedCore<G>> + Parametric<Data = G> + Into<OwnedCore<G>>,
     G: GraphData,
 {
@@ -67,8 +121,9 @@ where
     }
 }
 
-impl<M, G> AsStorage<Arc<G>> for Mutation<M>
+impl<P, M, G> AsStorage<Arc<G>> for Mutation<P, M>
 where
+    P: Mode<G>,
     M: Consistent + From<OwnedCore<G>> + Parametric<Data = G> + Into<OwnedCore<G>>,
     G: GraphData,
 {
@@ -77,8 +132,9 @@ where
     }
 }
 
-impl<M, G> AsStorage<Edge<G>> for Mutation<M>
+impl<P, M, G> AsStorage<Edge<G>> for Mutation<P, M>
 where
+    P: Mode<G>,
     M: Consistent + From<OwnedCore<G>> + Parametric<Data = G> + Into<OwnedCore<G>>,
     G: GraphData,
 {
@@ -87,8 +143,9 @@ where
     }
 }
 
-impl<M, G> AsStorage<Face<G>> for Mutation<M>
+impl<P, M, G> AsStorage<Face<G>> for Mutation<P, M>
 where
+    P: Mode<G>,
     M: Consistent + From<OwnedCore<G>> + Parametric<Data = G> + Into<OwnedCore<G>>,
     G: GraphData,
 {
@@ -97,8 +154,9 @@ where
     }
 }
 
-impl<M, G> AsStorage<Vertex<G>> for Mutation<M>
+impl<P, M, G> AsStorage<Vertex<G>> for Mutation<P, M>
 where
+    P: Mode<G>,
     M: Consistent + From<OwnedCore<G>> + Parametric<Data = G> + Into<OwnedCore<G>>,
     G: GraphData,
 {
@@ -108,20 +166,22 @@ where
 }
 
 // TODO: This is a hack. Replace this with delegation.
-impl<M, G> Deref for Mutation<M>
+impl<P, M, G> Deref for Mutation<P, M>
 where
+    P: Mode<G>,
     M: Consistent + From<OwnedCore<G>> + Parametric<Data = G> + Into<OwnedCore<G>>,
     G: GraphData,
 {
-    type Target = FaceMutation<M>;
+    type Target = FaceMutation<P, M>;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl<M, G> DerefMut for Mutation<M>
+impl<P, M, G> DerefMut for Mutation<P, M>
 where
+    P: Mode<G>,
     M: Consistent + From<OwnedCore<G>> + Parametric<Data = G> + Into<OwnedCore<G>>,
     G: GraphData,
 {
@@ -130,8 +190,13 @@ where
     }
 }
 
-impl<M, G> From<M> for Mutation<M>
+impl<P, M, G> From<M> for Mutation<P, M>
 where
+    P: Mode<G>,
+    P::VertexStorage: From<<Vertex<G> as Entity>::Storage>,
+    P::ArcStorage: From<<Arc<G> as Entity>::Storage>,
+    P::EdgeStorage: From<<Edge<G> as Entity>::Storage>,
+    P::FaceStorage: From<<Face<G> as Entity>::Storage>,
     M: Consistent + From<OwnedCore<G>> + Parametric<Data = G> + Into<OwnedCore<G>>,
     G: GraphData,
 {
@@ -142,15 +207,16 @@ where
     }
 }
 
-impl<M, G> Parametric for Mutation<M>
+impl<P, M, G> Parametric for Mutation<P, M>
 where
+    P: Mode<G>,
     M: Consistent + From<OwnedCore<G>> + Parametric<Data = G> + Into<OwnedCore<G>>,
     G: GraphData,
 {
     type Data = G;
 }
 
-impl<M, G> Transact<M> for Mutation<M>
+impl<M, G> Transact<M> for Mutation<Immediate<G>, M>
 where
     M: Consistent + From<OwnedCore<G>> + Parametric<Data = G> + Into<OwnedCore<G>>,
     G: GraphData,

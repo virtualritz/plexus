@@ -8,7 +8,7 @@ use crate::graph::edge::Arc;
 use crate::graph::face::{Face, FaceKey};
 use crate::graph::mutation::face::{self, FaceInsertCache};
 use crate::graph::mutation::vertex;
-use crate::graph::mutation::{Consistent, Mutable, Mutation};
+use crate::graph::mutation::{Consistent, Mode, Mutable, Mutation};
 use crate::graph::path::Path;
 use crate::graph::vertex::{Vertex, VertexKey, VertexView};
 use crate::graph::GraphError;
@@ -40,13 +40,14 @@ impl PathExtrudeCache {
     }
 }
 
-pub fn extrude_contour_with<M, N, F>(
+pub fn extrude_contour_with<P, M, N, F>(
     mut mutation: N,
     cache: PathExtrudeCache,
     f: F,
 ) -> Result<FaceKey, GraphError>
 where
-    N: AsMut<Mutation<M>>,
+    N: AsMut<Mutation<P, M>>,
+    P: Mode<Data<M>>,
     M: Mutable,
     F: Fn(<Data<M> as GraphData>::Vertex) -> <Data<M> as GraphData>::Vertex,
 {

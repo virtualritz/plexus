@@ -6,7 +6,6 @@ use std::hash::Hash;
 
 use crate::entity::{Entity, Payload};
 
-// TODO: Should this module be flattened or expose sub-modules?
 pub use crate::entity::storage::hash::FnvEntityMap;
 pub use crate::entity::storage::journal::{Journaled, Rekeying, Unjournaled};
 pub use crate::entity::storage::slot::SlotEntityMap;

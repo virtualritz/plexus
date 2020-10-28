@@ -4,7 +4,7 @@ use crate::graph::data::GraphData;
 use crate::graph::face::FaceKey;
 use crate::graph::mutation::face::{self, FaceInsertCache};
 use crate::graph::mutation::vertex;
-use crate::graph::mutation::Mutation;
+use crate::graph::mutation::{Immediate, Mutation};
 use crate::graph::vertex::VertexKey;
 use crate::graph::{GraphError, MeshGraph};
 use crate::transact::{ClosedInput, Transact};
@@ -13,7 +13,7 @@ pub struct GraphBuilder<G>
 where
     G: GraphData,
 {
-    mutation: Mutation<MeshGraph<G>>,
+    mutation: Mutation<Immediate<G>, MeshGraph<G>>,
 }
 
 impl<G> Default for GraphBuilder<G>

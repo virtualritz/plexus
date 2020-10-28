@@ -3,9 +3,10 @@ use crate::entity::storage::{AsStorage, AsStorageMut, Fuse, StorageObject};
 use crate::entity::Entity;
 use crate::graph::core::Core;
 use crate::graph::data::{Data, GraphData, Parametric};
-use crate::graph::edge::ArcKey;
+use crate::graph::edge::{Arc, ArcKey, Edge};
+use crate::graph::face::Face;
 use crate::graph::mutation::edge::{self, EdgeRemoveCache};
-use crate::graph::mutation::{Consistent, Mutable, Mutation};
+use crate::graph::mutation::{Consistent, Immediate, Mode, Mutable, Mutation};
 use crate::graph::vertex::{Vertex, VertexKey, VertexView};
 use crate::graph::GraphError;
 use crate::transact::Transact;
@@ -16,16 +17,17 @@ type RefCore<'a, G> = Core<G, &'a StorageObject<Vertex<G>>, (), (), ()>;
 #[cfg(all(nightly, feature = "unstable"))]
 type RefCore<'a, G> = Core<G, &'a StorageObject<'a, Vertex<G>>, (), (), ()>;
 
-pub struct VertexMutation<M>
+pub struct VertexMutation<P, M>
 where
+    P: Mode<Data<M>>,
     M: Parametric,
 {
-    // TODO: Use and require journaled storage.
-    storage: <Vertex<Data<M>> as Entity>::Storage,
+    storage: P::VertexStorage,
 }
 
-impl<M, G> VertexMutation<M>
+impl<P, M, G> VertexMutation<P, M>
 where
+    P: Mode<G>,
     M: Parametric<Data = G>,
     G: GraphData,
 {
@@ -56,28 +58,36 @@ where
     }
 }
 
-impl<M, G> AsStorage<Vertex<G>> for VertexMutation<M>
+impl<P, M, G> AsStorage<Vertex<G>> for VertexMutation<P, M>
 where
+    P: Mode<G>,
     M: Parametric<Data = G>,
     G: GraphData,
 {
     fn as_storage(&self) -> &StorageObject<Vertex<G>> {
-        &self.storage
+        self.storage.as_storage()
     }
 }
 
-impl<M, G> From<OwnedCore<G>> for VertexMutation<M>
+impl<P, M, G> From<OwnedCore<G>> for VertexMutation<P, M>
 where
+    P: Mode<G>,
+    P::VertexStorage: From<<Vertex<G> as Entity>::Storage>,
+    P::ArcStorage: From<<Arc<G> as Entity>::Storage>,
+    P::EdgeStorage: From<<Edge<G> as Entity>::Storage>,
+    P::FaceStorage: From<<Face<G> as Entity>::Storage>,
     M: Parametric<Data = G>,
     G: GraphData,
 {
     fn from(core: OwnedCore<G>) -> Self {
         let (vertices, ..) = core.unfuse();
-        VertexMutation { storage: vertices }
+        VertexMutation {
+            storage: vertices.into(),
+        }
     }
 }
 
-impl<M, G> Transact<OwnedCore<G>> for VertexMutation<M>
+impl<M, G> Transact<OwnedCore<G>> for VertexMutation<Immediate<G>, M>
 where
     M: Parametric<Data = G>,
     G: GraphData,
@@ -90,7 +100,7 @@ where
             storage: vertices, ..
         } = self;
         // In a consistent graph, all vertices must have a leading arc.
-        for (_, vertex) in vertices.iter() {
+        for (_, vertex) in vertices.as_storage().iter() {
             if vertex.arc.is_none() {
                 return Err(GraphError::TopologyMalformed);
             }
@@ -114,9 +124,10 @@ impl VertexRemoveCache {
     }
 }
 
-pub fn insert<M, N>(mut mutation: N, geometry: <Data<M> as GraphData>::Vertex) -> VertexKey
+pub fn insert<P, M, N>(mut mutation: N, geometry: <Data<M> as GraphData>::Vertex) -> VertexKey
 where
-    N: AsMut<Mutation<M>>,
+    N: AsMut<Mutation<P, M>>,
+    P: Mode<Data<M>>,
     M: Mutable,
 {
     mutation
@@ -126,12 +137,13 @@ where
         .insert(Vertex::new(geometry))
 }
 
-pub fn remove<M, N>(
+pub fn remove<P, M, N>(
     mut mutation: N,
     cache: VertexRemoveCache,
 ) -> Result<Vertex<Data<M>>, GraphError>
 where
-    N: AsMut<Mutation<M>>,
+    N: AsMut<Mutation<P, M>>,
+    P: Mode<Data<M>>,
     M: Mutable,
 {
     let VertexRemoveCache { cache } = cache;

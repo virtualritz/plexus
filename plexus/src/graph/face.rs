@@ -25,7 +25,7 @@ use crate::graph::mutation::face::{
     self, FaceBridgeCache, FaceExtrudeCache, FaceInsertCache, FacePokeCache, FaceRemoveCache,
     FaceSplitCache,
 };
-use crate::graph::mutation::{Consistent, Mutable, Mutation};
+use crate::graph::mutation::{self, Consistent, Immediate, Mutable};
 use crate::graph::path::Path;
 use crate::graph::vertex::{Vertex, VertexKey, VertexOrphan, VertexView};
 use crate::graph::{GraphError, MeshGraph, OptionExt as _, ResultExt as _, Selector};
@@ -33,6 +33,8 @@ use crate::transact::{Mutate, Transact};
 use crate::{DynamicArity, IteratorExt as _, StaticArity};
 
 use Selector::ByIndex;
+
+type Mutation<M> = mutation::Mutation<Immediate<Data<M>>, M>;
 
 pub trait ToRing<B>: DynamicArity<Dynamic = usize> + Sized
 where

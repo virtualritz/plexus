@@ -318,6 +318,16 @@ where
     }
 }
 
+impl<T, E> From<T> for Journaled<T, E>
+where
+    T: Default + Dispatch<E> + JournalState + Storage<E> + Unjournaled,
+    E: Entity<Storage = T>,
+{
+    fn from(storage: T) -> Self {
+        Journaled::transact(storage)
+    }
+}
+
 impl<T, E> Get<E> for Journaled<T, E>
 where
     T: Default + Dispatch<E> + JournalState + Storage<E> + Unjournaled,

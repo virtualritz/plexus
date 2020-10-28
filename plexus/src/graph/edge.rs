@@ -21,11 +21,13 @@ use crate::graph::geometry::{ArcNormal, EdgeMidpoint, VertexPosition};
 use crate::graph::mutation::edge::{
     self, ArcBridgeCache, ArcExtrudeCache, EdgeRemoveCache, EdgeSplitCache,
 };
-use crate::graph::mutation::{Consistent, Mutable, Mutation};
+use crate::graph::mutation::{self, Consistent, Immediate, Mutable};
 use crate::graph::path::Path;
 use crate::graph::vertex::{Vertex, VertexKey, VertexOrphan, VertexView};
 use crate::graph::{GraphError, OptionExt as _, ResultExt as _, Selector};
 use crate::transact::{Mutate, Transact};
+
+type Mutation<M> = mutation::Mutation<Immediate<Data<M>>, M>;
 
 pub trait ToArc<B>: Sized
 where
