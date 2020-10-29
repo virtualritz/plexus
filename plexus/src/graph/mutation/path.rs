@@ -40,16 +40,16 @@ impl PathExtrudeCache {
     }
 }
 
-pub fn extrude_contour_with<P, M, N, F>(
+pub fn extrude_contour_with<N, P, F>(
     mut mutation: N,
     cache: PathExtrudeCache,
     f: F,
 ) -> Result<FaceKey, GraphError>
 where
-    N: AsMut<Mutation<P, M>>,
-    P: Mode<Data<M>>,
-    M: Mutable,
-    F: Fn(<Data<M> as GraphData>::Vertex) -> <Data<M> as GraphData>::Vertex,
+    N: AsMut<Mutation<P>>,
+    P: Mode,
+    P::Graph: Mutable,
+    F: Fn(<Data<P::Graph> as GraphData>::Vertex) -> <Data<P::Graph> as GraphData>::Vertex,
 {
     let PathExtrudeCache { sources } = cache;
     let destinations: SmallVec<[_; 2]> = sources

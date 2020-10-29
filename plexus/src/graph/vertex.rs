@@ -27,7 +27,7 @@ use crate::graph::{GraphError, OptionExt as _, ResultExt as _};
 use crate::transact::{Mutate, Transact};
 use crate::IteratorExt as _;
 
-type Mutation<M> = mutation::Mutation<Immediate<Data<M>>, M>;
+type Mutation<M> = mutation::Mutation<Immediate<M>>;
 
 /// Vertex entity.
 #[derivative(Clone, Copy, Debug, Hash)]

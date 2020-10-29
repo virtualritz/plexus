@@ -283,7 +283,7 @@ use crate::entity::{Entity, EntityError};
 use crate::geometry::{FromGeometry, IntoGeometry};
 use crate::graph::builder::GraphBuilder;
 use crate::graph::core::{Core, OwnedCore};
-use crate::graph::data::{Data, Parametric};
+use crate::graph::data::Parametric;
 use crate::graph::edge::{Arc, Edge};
 use crate::graph::face::Face;
 use crate::graph::mutation::face::FaceInsertCache;
@@ -309,7 +309,7 @@ pub use crate::graph::vertex::{VertexKey, VertexOrphan, VertexView};
 pub use Selector::ByIndex;
 pub use Selector::ByKey;
 
-type Mutation<M> = mutation::Mutation<Immediate<Data<M>>, M>;
+type Mutation<M> = mutation::Mutation<Immediate<M>>;
 
 /// Errors concerning [`MeshGraph`]s.
 ///

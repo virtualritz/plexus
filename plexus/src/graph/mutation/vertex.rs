@@ -17,21 +17,18 @@ type RefCore<'a, G> = Core<G, &'a StorageObject<Vertex<G>>, (), (), ()>;
 #[cfg(all(nightly, feature = "unstable"))]
 type RefCore<'a, G> = Core<G, &'a StorageObject<'a, Vertex<G>>, (), (), ()>;
 
-pub struct VertexMutation<P, M>
+pub struct VertexMutation<P>
 where
-    P: Mode<Data<M>>,
-    M: Parametric,
+    P: Mode,
 {
     storage: P::VertexStorage,
 }
 
-impl<P, M, G> VertexMutation<P, M>
+impl<P> VertexMutation<P>
 where
-    P: Mode<G>,
-    M: Parametric<Data = G>,
-    G: GraphData,
+    P: Mode,
 {
-    pub fn to_ref_core(&self) -> RefCore<G> {
+    pub fn to_ref_core(&self) -> RefCore<Data<P::Graph>> {
         Core::empty().fuse(self.storage.as_storage())
     }
 
@@ -47,7 +44,7 @@ where
 
     fn with_vertex_mut<T, F>(&mut self, a: VertexKey, mut f: F) -> Result<T, GraphError>
     where
-        F: FnMut(&mut Vertex<G>) -> T,
+        F: FnMut(&mut Vertex<Data<P::Graph>>) -> T,
     {
         let vertex = self
             .storage
@@ -58,28 +55,24 @@ where
     }
 }
 
-impl<P, M, G> AsStorage<Vertex<G>> for VertexMutation<P, M>
+impl<P> AsStorage<Vertex<Data<P::Graph>>> for VertexMutation<P>
 where
-    P: Mode<G>,
-    M: Parametric<Data = G>,
-    G: GraphData,
+    P: Mode,
 {
-    fn as_storage(&self) -> &StorageObject<Vertex<G>> {
+    fn as_storage(&self) -> &StorageObject<Vertex<Data<P::Graph>>> {
         self.storage.as_storage()
     }
 }
 
-impl<P, M, G> From<OwnedCore<G>> for VertexMutation<P, M>
+impl<P> From<OwnedCore<Data<P::Graph>>> for VertexMutation<P>
 where
-    P: Mode<G>,
-    P::VertexStorage: From<<Vertex<G> as Entity>::Storage>,
-    P::ArcStorage: From<<Arc<G> as Entity>::Storage>,
-    P::EdgeStorage: From<<Edge<G> as Entity>::Storage>,
-    P::FaceStorage: From<<Face<G> as Entity>::Storage>,
-    M: Parametric<Data = G>,
-    G: GraphData,
+    P: Mode,
+    P::VertexStorage: From<<Vertex<Data<P::Graph>> as Entity>::Storage>,
+    P::ArcStorage: From<<Arc<Data<P::Graph>> as Entity>::Storage>,
+    P::EdgeStorage: From<<Edge<Data<P::Graph>> as Entity>::Storage>,
+    P::FaceStorage: From<<Face<Data<P::Graph>> as Entity>::Storage>,
 {
-    fn from(core: OwnedCore<G>) -> Self {
+    fn from(core: OwnedCore<Data<P::Graph>>) -> Self {
         let (vertices, ..) = core.unfuse();
         VertexMutation {
             storage: vertices.into(),
@@ -87,12 +80,11 @@ where
     }
 }
 
-impl<M, G> Transact<OwnedCore<G>> for VertexMutation<Immediate<G>, M>
+impl<M> Transact<OwnedCore<Data<M>>> for VertexMutation<Immediate<M>>
 where
-    M: Parametric<Data = G>,
-    G: GraphData,
+    M: Parametric,
 {
-    type Output = OwnedCore<G>;
+    type Output = OwnedCore<Data<M>>;
     type Error = GraphError;
 
     fn commit(self) -> Result<Self::Output, Self::Error> {
@@ -124,11 +116,11 @@ impl VertexRemoveCache {
     }
 }
 
-pub fn insert<P, M, N>(mut mutation: N, geometry: <Data<M> as GraphData>::Vertex) -> VertexKey
+pub fn insert<N, P>(mut mutation: N, geometry: <Data<P::Graph> as GraphData>::Vertex) -> VertexKey
 where
-    N: AsMut<Mutation<P, M>>,
-    P: Mode<Data<M>>,
-    M: Mutable,
+    N: AsMut<Mutation<P>>,
+    P: Mode,
+    P::Graph: Mutable,
 {
     mutation
         .as_mut()
@@ -137,14 +129,14 @@ where
         .insert(Vertex::new(geometry))
 }
 
-pub fn remove<P, M, N>(
+pub fn remove<N, P>(
     mut mutation: N,
     cache: VertexRemoveCache,
-) -> Result<Vertex<Data<M>>, GraphError>
+) -> Result<Vertex<Data<P::Graph>>, GraphError>
 where
-    N: AsMut<Mutation<P, M>>,
-    P: Mode<Data<M>>,
-    M: Mutable,
+    N: AsMut<Mutation<P>>,
+    P: Mode,
+    P::Graph: Mutable,
 {
     let VertexRemoveCache { cache } = cache;
     for cache in cache {

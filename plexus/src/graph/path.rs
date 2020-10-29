@@ -24,7 +24,7 @@ use Selector::ByKey;
 //       expensive. Borrowing variants of associated functions should probably
 //       provide bespoke implementations rather than using `to_ref`.
 
-type Mutation<M> = mutation::Mutation<Immediate<Data<M>>, M>;
+type Mutation<M> = mutation::Mutation<Immediate<M>>;
 
 /// Non-intersecting path.
 ///

@@ -34,7 +34,7 @@ use crate::{DynamicArity, IteratorExt as _, StaticArity};
 
 use Selector::ByIndex;
 
-type Mutation<M> = mutation::Mutation<Immediate<Data<M>>, M>;
+type Mutation<M> = mutation::Mutation<Immediate<M>>;
 
 pub trait ToRing<B>: DynamicArity<Dynamic = usize> + Sized
 where

@@ -13,7 +13,7 @@ pub struct GraphBuilder<G>
 where
     G: GraphData,
 {
-    mutation: Mutation<Immediate<G>, MeshGraph<G>>,
+    mutation: Mutation<Immediate<MeshGraph<G>>>,
 }
 
 impl<G> Default for GraphBuilder<G>

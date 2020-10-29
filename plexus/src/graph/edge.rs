@@ -27,7 +27,7 @@ use crate::graph::vertex::{Vertex, VertexKey, VertexOrphan, VertexView};
 use crate::graph::{GraphError, OptionExt as _, ResultExt as _, Selector};
 use crate::transact::{Mutate, Transact};
 
-type Mutation<M> = mutation::Mutation<Immediate<Data<M>>, M>;
+type Mutation<M> = mutation::Mutation<Immediate<M>>;
 
 pub trait ToArc<B>: Sized
 where

@@ -18,22 +18,19 @@ use crate::graph::GraphError;
 use crate::transact::Transact;
 use crate::{DynamicArity, IteratorExt as _};
 
-pub struct FaceMutation<P, M>
+pub struct FaceMutation<P>
 where
-    P: Mode<Data<M>>,
-    M: Parametric,
+    P: Mode,
 {
-    inner: EdgeMutation<P, M>,
+    inner: EdgeMutation<P>,
     storage: P::FaceStorage,
 }
 
-impl<P, M, G> FaceMutation<P, M>
+impl<P> FaceMutation<P>
 where
-    P: Mode<G>,
-    M: Parametric<Data = G>,
-    G: GraphData,
+    P: Mode,
 {
-    pub fn to_ref_core(&self) -> RefCore<G> {
+    pub fn to_ref_core(&self) -> RefCore<Data<P::Graph>> {
         self.inner.to_ref_core().fuse(self.storage.as_storage())
     }
 
@@ -118,7 +115,7 @@ where
 
     fn with_face_mut<T, F>(&mut self, abc: FaceKey, mut f: F) -> Result<T, GraphError>
     where
-        F: FnMut(&mut Face<G>) -> T,
+        F: FnMut(&mut Face<Data<P::Graph>>) -> T,
     {
         let face = self
             .storage
@@ -129,53 +126,45 @@ where
     }
 }
 
-impl<P, M, G> AsStorage<Face<G>> for FaceMutation<P, M>
+impl<P> AsStorage<Face<Data<P::Graph>>> for FaceMutation<P>
 where
-    P: Mode<G>,
-    M: Parametric<Data = G>,
-    G: GraphData,
+    P: Mode,
 {
-    fn as_storage(&self) -> &StorageObject<Face<G>> {
+    fn as_storage(&self) -> &StorageObject<Face<Data<P::Graph>>> {
         self.storage.as_storage()
     }
 }
 
 // TODO: This is a hack. Replace this with delegation.
-impl<P, M, G> Deref for FaceMutation<P, M>
+impl<P> Deref for FaceMutation<P>
 where
-    P: Mode<G>,
-    M: Parametric<Data = G>,
-    G: GraphData,
+    P: Mode,
 {
-    type Target = EdgeMutation<P, M>;
+    type Target = EdgeMutation<P>;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl<P, M, G> DerefMut for FaceMutation<P, M>
+impl<P> DerefMut for FaceMutation<P>
 where
-    P: Mode<G>,
-    M: Parametric<Data = G>,
-    G: GraphData,
+    P: Mode,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
     }
 }
 
-impl<P, M, G> From<OwnedCore<G>> for FaceMutation<P, M>
+impl<P> From<OwnedCore<Data<P::Graph>>> for FaceMutation<P>
 where
-    P: Mode<G>,
-    P::VertexStorage: From<<Vertex<G> as Entity>::Storage>,
-    P::ArcStorage: From<<Arc<G> as Entity>::Storage>,
-    P::EdgeStorage: From<<Edge<G> as Entity>::Storage>,
-    P::FaceStorage: From<<Face<G> as Entity>::Storage>,
-    M: Parametric<Data = G>,
-    G: GraphData,
+    P: Mode,
+    P::VertexStorage: From<<Vertex<Data<P::Graph>> as Entity>::Storage>,
+    P::ArcStorage: From<<Arc<Data<P::Graph>> as Entity>::Storage>,
+    P::EdgeStorage: From<<Edge<Data<P::Graph>> as Entity>::Storage>,
+    P::FaceStorage: From<<Face<Data<P::Graph>> as Entity>::Storage>,
 {
-    fn from(core: OwnedCore<G>) -> Self {
+    fn from(core: OwnedCore<Data<P::Graph>>) -> Self {
         let (vertices, arcs, edges, faces) = core.unfuse();
         FaceMutation {
             storage: faces.into(),
@@ -184,12 +173,11 @@ where
     }
 }
 
-impl<M, G> Transact<OwnedCore<G>> for FaceMutation<Immediate<G>, M>
+impl<M> Transact<OwnedCore<Data<M>>> for FaceMutation<Immediate<M>>
 where
-    M: Parametric<Data = G>,
-    G: GraphData,
+    M: Parametric,
 {
-    type Output = OwnedCore<G>;
+    type Output = OwnedCore<Data<M>>;
     type Error = GraphError;
 
     // TODO: Ensure that faces are in a consistent state.
@@ -483,16 +471,19 @@ impl FaceExtrudeCache {
 }
 
 // TODO: Should this accept arc geometry at all?
-pub fn insert_with<P, M, N, F>(
+pub fn insert_with<N, P, F>(
     mut mutation: N,
     cache: FaceInsertCache,
     f: F,
 ) -> Result<FaceKey, GraphError>
 where
-    N: AsMut<Mutation<P, M>>,
-    P: Mode<Data<M>>,
-    M: Mutable,
-    F: FnOnce() -> (<Data<M> as GraphData>::Arc, <Data<M> as GraphData>::Face),
+    N: AsMut<Mutation<P>>,
+    P: Mode,
+    P::Graph: Mutable,
+    F: FnOnce() -> (
+        <Data<P::Graph> as GraphData>::Arc,
+        <Data<P::Graph> as GraphData>::Face,
+    ),
 {
     let FaceInsertCache {
         perimeter,
@@ -527,11 +518,14 @@ where
 // TODO: Does this require a cache (or consistency)?
 // TODO: This may need to be more destructive to maintain consistency. Edges,
 //       arcs, and vertices may also need to be removed.
-pub fn remove<P, M, N>(mut mutation: N, cache: FaceRemoveCache) -> Result<Face<Data<M>>, GraphError>
+pub fn remove<N, P>(
+    mut mutation: N,
+    cache: FaceRemoveCache,
+) -> Result<Face<Data<P::Graph>>, GraphError>
 where
-    N: AsMut<Mutation<P, M>>,
-    P: Mode<Data<M>>,
-    M: Mutable,
+    N: AsMut<Mutation<P>>,
+    P: Mode,
+    P::Graph: Mutable,
 {
     let FaceRemoveCache { abc, arcs } = cache;
     mutation.as_mut().disconnect_face_interior(&arcs)?;
@@ -544,11 +538,11 @@ where
     Ok(face)
 }
 
-pub fn split<P, M, N>(mut mutation: N, cache: FaceSplitCache) -> Result<ArcKey, GraphError>
+pub fn split<N, P>(mut mutation: N, cache: FaceSplitCache) -> Result<ArcKey, GraphError>
 where
-    N: AsMut<Mutation<P, M>>,
-    P: Mode<Data<M>>,
-    M: Mutable,
+    N: AsMut<Mutation<P>>,
+    P: Mode,
+    P::Graph: Mutable,
 {
     let FaceSplitCache { cache, left, right } = cache;
     remove(mutation.as_mut(), cache)?;
@@ -560,16 +554,16 @@ where
     Ok(ab)
 }
 
-pub fn poke_with<P, M, N, F>(
+pub fn poke_with<N, P, F>(
     mut mutation: N,
     cache: FacePokeCache,
     f: F,
 ) -> Result<VertexKey, GraphError>
 where
-    N: AsMut<Mutation<P, M>>,
-    P: Mode<Data<M>>,
-    M: Mutable,
-    F: FnOnce() -> <Data<M> as GraphData>::Vertex,
+    N: AsMut<Mutation<P>>,
+    P: Mode,
+    P::Graph: Mutable,
+    F: FnOnce() -> <Data<P::Graph> as GraphData>::Vertex,
 {
     let FacePokeCache { vertices, cache } = cache;
     let face = remove(mutation.as_mut(), cache)?;
@@ -581,11 +575,11 @@ where
     Ok(c)
 }
 
-pub fn bridge<P, M, N>(mut mutation: N, cache: FaceBridgeCache) -> Result<(), GraphError>
+pub fn bridge<N, P>(mut mutation: N, cache: FaceBridgeCache) -> Result<(), GraphError>
 where
-    N: AsMut<Mutation<P, M>>,
-    P: Mode<Data<M>>,
-    M: Mutable,
+    N: AsMut<Mutation<P>>,
+    P: Mode,
+    P::Graph: Mutable,
 {
     let FaceBridgeCache {
         source,
@@ -607,16 +601,16 @@ where
     Ok(())
 }
 
-pub fn extrude_with<P, M, N, F>(
+pub fn extrude_with<N, P, F>(
     mut mutation: N,
     cache: FaceExtrudeCache,
     f: F,
 ) -> Result<FaceKey, GraphError>
 where
-    N: AsMut<Mutation<P, M>>,
-    P: Mode<Data<M>>,
-    M: Mutable,
-    F: Fn(<Data<M> as GraphData>::Vertex) -> <Data<M> as GraphData>::Vertex,
+    N: AsMut<Mutation<P>>,
+    P: Mode,
+    P::Graph: Mutable,
+    F: Fn(<Data<P::Graph> as GraphData>::Vertex) -> <Data<P::Graph> as GraphData>::Vertex,
 {
     let FaceExtrudeCache { sources, cache } = cache;
     remove(mutation.as_mut(), cache)?;

@@ -44,23 +44,20 @@ type RefCore<'a, G> = Core<
     (),
 >;
 
-pub struct EdgeMutation<P, M>
+pub struct EdgeMutation<P>
 where
-    P: Mode<Data<M>>,
-    M: Parametric,
+    P: Mode,
 {
-    inner: VertexMutation<P, M>,
+    inner: VertexMutation<P>,
     // TODO: Split this into two fields.
     storage: (P::ArcStorage, P::EdgeStorage),
 }
 
-impl<P, M, G> EdgeMutation<P, M>
+impl<P> EdgeMutation<P>
 where
-    P: Mode<G>,
-    M: Parametric<Data = G>,
-    G: GraphData,
+    P: Mode,
 {
-    pub fn to_ref_core(&self) -> RefCore<G> {
+    pub fn to_ref_core(&self) -> RefCore<Data<P::Graph>> {
         self.inner
             .to_ref_core()
             .fuse(self.storage.0.as_storage())
@@ -105,7 +102,7 @@ where
 
     fn with_arc_mut<T, F>(&mut self, ab: ArcKey, mut f: F) -> Result<T, GraphError>
     where
-        F: FnMut(&mut Arc<G>) -> T,
+        F: FnMut(&mut Arc<Data<P::Graph>>) -> T,
     {
         let arc = self
             .storage
@@ -117,64 +114,54 @@ where
     }
 }
 
-impl<P, M, G> AsStorage<Arc<G>> for EdgeMutation<P, M>
+impl<P> AsStorage<Arc<Data<P::Graph>>> for EdgeMutation<P>
 where
-    P: Mode<G>,
-    M: Parametric<Data = G>,
-    G: GraphData,
+    P: Mode,
 {
-    fn as_storage(&self) -> &StorageObject<Arc<G>> {
+    fn as_storage(&self) -> &StorageObject<Arc<Data<P::Graph>>> {
         self.storage.0.as_storage()
     }
 }
 
-impl<P, M, G> AsStorage<Edge<G>> for EdgeMutation<P, M>
+impl<P> AsStorage<Edge<Data<P::Graph>>> for EdgeMutation<P>
 where
-    P: Mode<G>,
-    M: Parametric<Data = G>,
-    G: GraphData,
+    P: Mode,
 {
-    fn as_storage(&self) -> &StorageObject<Edge<G>> {
+    fn as_storage(&self) -> &StorageObject<Edge<Data<P::Graph>>> {
         self.storage.1.as_storage()
     }
 }
 
 // TODO: This is a hack. Replace this with delegation.
-impl<P, M, G> Deref for EdgeMutation<P, M>
+impl<P> Deref for EdgeMutation<P>
 where
-    P: Mode<G>,
-    M: Parametric<Data = G>,
-    G: GraphData,
+    P: Mode,
 {
-    type Target = VertexMutation<P, M>;
+    type Target = VertexMutation<P>;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl<P, M, G> DerefMut for EdgeMutation<P, M>
+impl<P> DerefMut for EdgeMutation<P>
 where
-    P: Mode<G>,
-    M: Parametric<Data = G>,
-    G: GraphData,
+    P: Mode,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
     }
 }
 
-impl<P, M, G> From<OwnedCore<G>> for EdgeMutation<P, M>
+impl<P> From<OwnedCore<Data<P::Graph>>> for EdgeMutation<P>
 where
-    P: Mode<G>,
-    P::VertexStorage: From<<Vertex<G> as Entity>::Storage>,
-    P::ArcStorage: From<<Arc<G> as Entity>::Storage>,
-    P::EdgeStorage: From<<Edge<G> as Entity>::Storage>,
-    P::FaceStorage: From<<Face<G> as Entity>::Storage>,
-    M: Parametric<Data = G>,
-    G: GraphData,
+    P: Mode,
+    P::VertexStorage: From<<Vertex<Data<P::Graph>> as Entity>::Storage>,
+    P::ArcStorage: From<<Arc<Data<P::Graph>> as Entity>::Storage>,
+    P::EdgeStorage: From<<Edge<Data<P::Graph>> as Entity>::Storage>,
+    P::FaceStorage: From<<Face<Data<P::Graph>> as Entity>::Storage>,
 {
-    fn from(core: OwnedCore<G>) -> Self {
+    fn from(core: OwnedCore<Data<P::Graph>>) -> Self {
         let (vertices, arcs, edges, ..) = core.unfuse();
         EdgeMutation {
             inner: Core::empty().fuse(vertices).into(),
@@ -183,12 +170,11 @@ where
     }
 }
 
-impl<M, G> Transact<OwnedCore<G>> for EdgeMutation<Immediate<G>, M>
+impl<M> Transact<OwnedCore<Data<M>>> for EdgeMutation<Immediate<M>>
 where
-    M: Parametric<Data = G>,
-    G: GraphData,
+    M: Parametric,
 {
-    type Output = OwnedCore<G>;
+    type Output = OwnedCore<Data<M>>;
     type Error = GraphError;
 
     fn commit(self) -> Result<Self::Output, Self::Error> {
@@ -413,26 +399,29 @@ impl ArcExtrudeCache {
     }
 }
 
-pub fn get_or_insert_with<P, M, N, F>(
+pub fn get_or_insert_with<N, P, F>(
     mut mutation: N,
     endpoints: (VertexKey, VertexKey),
     f: F,
 ) -> Result<CompositeEdgeKey, GraphError>
 where
-    N: AsMut<Mutation<P, M>>,
-    P: Mode<Data<M>>,
-    M: Mutable,
-    F: FnOnce() -> (<Data<M> as GraphData>::Edge, <Data<M> as GraphData>::Arc),
+    N: AsMut<Mutation<P>>,
+    P: Mode,
+    P::Graph: Mutable,
+    F: FnOnce() -> (
+        <Data<P::Graph> as GraphData>::Edge,
+        <Data<P::Graph> as GraphData>::Arc,
+    ),
 {
-    fn get_or_insert_arc<P, M, N>(
+    fn get_or_insert_arc<N, P>(
         mut mutation: N,
         endpoints: (VertexKey, VertexKey),
-        geometry: <Data<M> as GraphData>::Arc,
+        geometry: <Data<P::Graph> as GraphData>::Arc,
     ) -> (Option<EdgeKey>, ArcKey)
     where
-        N: AsMut<Mutation<P, M>>,
-        P: Mode<Data<M>>,
-        M: Mutable,
+        N: AsMut<Mutation<P>>,
+        P: Mode,
+        P::Graph: Mutable,
     {
         let (a, _) = endpoints;
         let ab = endpoints.into();
@@ -479,23 +468,23 @@ where
 //       leading arc of vertices may be invalidated by this operation and must
 //       be healed. This code does not handle these cases, and so can become
 //       inconsistent.
-pub fn remove<P, M, N>(
+pub fn remove<N, P>(
     mut mutation: N,
     cache: EdgeRemoveCache,
-) -> Result<CompositeEdge<Data<M>>, GraphError>
+) -> Result<CompositeEdge<Data<P::Graph>>, GraphError>
 where
-    N: AsMut<Mutation<P, M>>,
-    P: Mode<Data<M>>,
-    M: Mutable,
+    N: AsMut<Mutation<P>>,
+    P: Mode,
+    P::Graph: Mutable,
 {
-    fn remove_arc<P, M, N>(
+    fn remove_arc<N, P>(
         mut mutation: N,
         cache: ArcRemoveCache,
-    ) -> Result<Arc<Data<M>>, GraphError>
+    ) -> Result<Arc<Data<P::Graph>>, GraphError>
     where
-        N: AsMut<Mutation<P, M>>,
-        P: Mode<Data<M>>,
-        M: Mutable,
+        N: AsMut<Mutation<P>>,
+        P: Mode,
+        P::Graph: Mutable,
     {
         let ArcRemoveCache { ab, cache, .. } = cache;
         if let Some(cache) = cache {
@@ -547,22 +536,22 @@ where
     ))
 }
 
-pub fn split_with<P, M, N, F>(
+pub fn split_with<N, P, F>(
     mut mutation: N,
     cache: EdgeSplitCache,
     f: F,
 ) -> Result<VertexKey, GraphError>
 where
-    N: AsMut<Mutation<P, M>>,
-    P: Mode<Data<M>>,
-    M: Mutable,
-    F: FnOnce() -> <Data<M> as GraphData>::Vertex,
+    N: AsMut<Mutation<P>>,
+    P: Mode,
+    P::Graph: Mutable,
+    F: FnOnce() -> <Data<P::Graph> as GraphData>::Vertex,
 {
-    fn remove<P, M, N>(mut mutation: N, ab: ArcKey) -> Result<Arc<Data<M>>, GraphError>
+    fn remove<N, P>(mut mutation: N, ab: ArcKey) -> Result<Arc<Data<P::Graph>>, GraphError>
     where
-        N: AsMut<Mutation<P, M>>,
-        P: Mode<Data<M>>,
-        M: Mutable,
+        N: AsMut<Mutation<P>>,
+        P: Mode,
+        P::Graph: Mutable,
     {
         // TODO: Is is probably more correct to disconnect the source vertex
         //       from its leading arc. However, this interacts poorly with
@@ -587,7 +576,7 @@ where
         Ok(arc)
     }
 
-    fn split_at_vertex<P, M, N>(
+    fn split_at_vertex<N, P>(
         mut mutation: N,
         a: VertexKey,
         b: VertexKey,
@@ -595,9 +584,9 @@ where
         ab: ArcKey,
     ) -> Result<(ArcKey, ArcKey), GraphError>
     where
-        N: AsMut<Mutation<P, M>>,
-        P: Mode<Data<M>>,
-        M: Mutable,
+        N: AsMut<Mutation<P>>,
+        P: Mode,
+        P::Graph: Mutable,
     {
         // Remove the arc and insert two truncated arcs in its place.
         let Arc {
@@ -651,11 +640,11 @@ where
     Ok(m)
 }
 
-pub fn bridge<P, M, N>(mut mutation: N, cache: ArcBridgeCache) -> Result<FaceKey, GraphError>
+pub fn bridge<N, P>(mut mutation: N, cache: ArcBridgeCache) -> Result<FaceKey, GraphError>
 where
-    N: AsMut<Mutation<P, M>>,
-    P: Mode<Data<M>>,
-    M: Mutable,
+    N: AsMut<Mutation<P>>,
+    P: Mode,
+    P::Graph: Mutable,
 {
     let ArcBridgeCache { a, b, c, d } = cache;
     let cache = FaceInsertCache::from_storage(mutation.as_mut(), &[a, b, c, d])?;
@@ -666,16 +655,16 @@ where
 // context and `f` is used in a manner that is consistent with the standard
 // library.
 #[allow(clippy::many_single_char_names)]
-pub fn extrude_with<P, M, N, F>(
+pub fn extrude_with<N, P, F>(
     mut mutation: N,
     cache: ArcExtrudeCache,
     f: F,
 ) -> Result<ArcKey, GraphError>
 where
-    N: AsMut<Mutation<P, M>>,
-    P: Mode<Data<M>>,
-    M: Mutable,
-    F: Fn(<Data<M> as GraphData>::Vertex) -> <Data<M> as GraphData>::Vertex,
+    N: AsMut<Mutation<P>>,
+    P: Mode,
+    P::Graph: Mutable,
+    F: Fn(<Data<P::Graph> as GraphData>::Vertex) -> <Data<P::Graph> as GraphData>::Vertex,
 {
     let ArcExtrudeCache { ab } = cache;
     let (c, d) = {
