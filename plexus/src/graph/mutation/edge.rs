@@ -14,7 +14,7 @@ use crate::graph::mutation::vertex::{self, VertexMutation};
 use crate::graph::mutation::{Consistent, Immediate, Mode, Mutable, Mutation};
 use crate::graph::vertex::{Vertex, VertexKey, VertexView};
 use crate::graph::GraphError;
-use crate::transact::Transact;
+use crate::transact::{Bypass, Transact};
 use crate::IteratorExt as _;
 
 pub type CompositeEdgeKey = (EdgeKey, (ArcKey, ArcKey));
@@ -129,6 +129,20 @@ where
 {
     fn as_storage(&self) -> &StorageObject<Edge<Data<P::Graph>>> {
         self.storage.1.as_storage()
+    }
+}
+
+impl<M> Bypass<OwnedCore<Data<M>>> for EdgeMutation<Immediate<M>>
+where
+    M: Parametric,
+{
+    fn bypass(self) -> Self::Commit {
+        let EdgeMutation {
+            inner,
+            storage: (arcs, edges),
+            ..
+        } = self;
+        inner.bypass().fuse(arcs).fuse(edges)
     }
 }
 

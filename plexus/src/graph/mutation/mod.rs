@@ -15,7 +15,7 @@ use crate::graph::face::Face;
 use crate::graph::mutation::face::FaceMutation;
 use crate::graph::vertex::Vertex;
 use crate::graph::{GraphData, GraphError};
-use crate::transact::Transact;
+use crate::transact::{Bypass, Transact};
 
 // TODO: The `Transact` trait provides no output on failure. This prevents the
 //       direct restoration of a graph that has been journaled. Enhance the
@@ -165,6 +165,15 @@ where
 {
     fn as_storage(&self) -> &StorageObject<Vertex<Data<P::Graph>>> {
         self.inner.to_ref_core().unfuse().0
+    }
+}
+
+impl<M> Bypass<M> for Mutation<Immediate<M>>
+where
+    M: Consistent + From<OwnedCore<Data<M>>> + Parametric + Into<OwnedCore<Data<M>>>,
+{
+    fn bypass(self) -> Self::Commit {
+        self.inner.bypass().into()
     }
 }
 

@@ -9,7 +9,7 @@ use crate::graph::mutation::edge::{self, EdgeRemoveCache};
 use crate::graph::mutation::{Consistent, Immediate, Mode, Mutable, Mutation};
 use crate::graph::vertex::{Vertex, VertexKey, VertexView};
 use crate::graph::GraphError;
-use crate::transact::Transact;
+use crate::transact::{Bypass, Transact};
 
 type OwnedCore<G> = Core<G, <Vertex<G> as Entity>::Storage, (), (), ()>;
 #[cfg(not(all(nightly, feature = "unstable")))]
@@ -61,6 +61,18 @@ where
 {
     fn as_storage(&self) -> &StorageObject<Vertex<Data<P::Graph>>> {
         self.storage.as_storage()
+    }
+}
+
+impl<M> Bypass<OwnedCore<Data<M>>> for VertexMutation<Immediate<M>>
+where
+    M: Parametric,
+{
+    fn bypass(self) -> Self::Commit {
+        let VertexMutation {
+            storage: vertices, ..
+        } = self;
+        Core::empty().fuse(vertices)
     }
 }
 

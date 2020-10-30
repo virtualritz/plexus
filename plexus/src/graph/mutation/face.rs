@@ -15,7 +15,7 @@ use crate::graph::mutation::edge::{self, ArcBridgeCache, EdgeMutation};
 use crate::graph::mutation::{vertex, Consistent, Immediate, Mode, Mutable, Mutation};
 use crate::graph::vertex::{Vertex, VertexKey, VertexView};
 use crate::graph::GraphError;
-use crate::transact::Transact;
+use crate::transact::{Bypass, Transact};
 use crate::{DynamicArity, IteratorExt as _};
 
 pub struct FaceMutation<P>
@@ -132,6 +132,20 @@ where
 {
     fn as_storage(&self) -> &StorageObject<Face<Data<P::Graph>>> {
         self.storage.as_storage()
+    }
+}
+
+impl<M> Bypass<OwnedCore<Data<M>>> for FaceMutation<Immediate<M>>
+where
+    M: Parametric,
+{
+    fn bypass(self) -> Self::Commit {
+        let FaceMutation {
+            inner,
+            storage: faces,
+            ..
+        } = self;
+        inner.bypass().fuse(faces)
     }
 }
 

@@ -19,24 +19,60 @@ pub trait Transact<T = ()>: Sized {
     {
         match f(&mut self) {
             Ok(value) => self.commit().map(|output| (output, value)),
-            Err(error) => {
-                let output = self.abort();
-                Err((output, error.into()))
-            }
+            Err(error) => Err((self.abort(), error.into())),
         }
     }
 
     fn abort(self) -> Self::Abort;
 }
 
-pub trait TransactFrom<T>: From<T> + Transact<T> {}
+pub trait Bypass<T>: Transact<T> {
+    fn bypass(self) -> Self::Commit;
 
-impl<T, U> TransactFrom<U> for T where T: From<U> + Transact<U> {}
+    #[cfg(test)]
+    fn maybe_commit(self) -> Result<Self::Commit, (Self::Abort, Self::Error)> {
+        self.commit()
+    }
+
+    #[cfg(not(test))]
+    fn maybe_commit(self) -> Result<Self::Commit, (Self::Abort, Self::Error)> {
+        Ok(self.bypass())
+    }
+
+    #[allow(clippy::type_complexity)]
+    #[cfg(test)]
+    fn maybe_commit_with<F, U, E>(
+        self,
+        f: F,
+    ) -> Result<(Self::Commit, U), (Self::Abort, Self::Error)>
+    where
+        F: FnOnce(&mut Self) -> Result<U, E>,
+        E: Into<Self::Error>,
+    {
+        self.commit_with(f)
+    }
+
+    #[allow(clippy::type_complexity)]
+    #[cfg(not(test))]
+    fn maybe_commit_with<F, U, E>(
+        mut self,
+        f: F,
+    ) -> Result<(Self::Commit, U), (Self::Abort, Self::Error)>
+    where
+        F: FnOnce(&mut Self) -> Result<U, E>,
+        E: Into<Self::Error>,
+    {
+        match f(&mut self) {
+            Ok(value) => Ok((self.bypass(), value)),
+            Err(error) => Err((self.abort(), error.into())),
+        }
+    }
+}
 
 pub trait Mutate<T>: Transact<T, Commit = T> {
     fn replace(target: &mut T, replacement: T) -> Replace<T, Self>
     where
-        Self: TransactFrom<T>,
+        Self: From<T> + Transact<T>,
     {
         Replace::replace(target, replacement)
     }
@@ -84,14 +120,14 @@ trait Drain<T> {
 
 pub struct Replace<'a, T, M>
 where
-    M: Mutate<T> + TransactFrom<T>,
+    M: From<T> + Mutate<T>,
 {
     inner: Option<(&'a mut T, M)>,
 }
 
 impl<'a, T, M> Replace<'a, T, M>
 where
-    M: Mutate<T> + TransactFrom<T>,
+    M: From<T> + Mutate<T>,
 {
     pub fn replace(target: &'a mut T, replacement: T) -> Self {
         let mutant = mem::replace(target, replacement);
@@ -122,7 +158,7 @@ where
 
 impl<'a, T, M> AsRef<M> for Replace<'a, T, M>
 where
-    M: Mutate<T> + TransactFrom<T>,
+    M: From<T> + Mutate<T>,
 {
     fn as_ref(&self) -> &M {
         &self.inner.as_ref().unwrap().1
@@ -131,7 +167,7 @@ where
 
 impl<'a, T, M> AsMut<M> for Replace<'a, T, M>
 where
-    M: Mutate<T> + TransactFrom<T>,
+    M: From<T> + Mutate<T>,
 {
     fn as_mut(&mut self) -> &mut M {
         &mut self.inner.as_mut().unwrap().1
@@ -140,7 +176,7 @@ where
 
 impl<'a, T, M> Drain<(&'a mut T, M)> for Replace<'a, T, M>
 where
-    M: Mutate<T> + TransactFrom<T>,
+    M: From<T> + Mutate<T>,
 {
     fn as_option_mut(&mut self) -> &mut Option<(&'a mut T, M)> {
         &mut self.inner
@@ -149,7 +185,7 @@ where
 
 impl<'a, T, M> Drop for Replace<'a, T, M>
 where
-    M: Mutate<T> + TransactFrom<T>,
+    M: From<T> + Mutate<T>,
 {
     fn drop(&mut self) {
         self.drain_and_abort();
@@ -159,7 +195,7 @@ where
 impl<'a, T, M> From<&'a mut T> for Replace<'a, T, M>
 where
     T: Default,
-    M: Mutate<T> + TransactFrom<T>,
+    M: From<T> + Mutate<T>,
 {
     fn from(target: &'a mut T) -> Self {
         Self::replace(target, Default::default())
@@ -168,7 +204,7 @@ where
 
 impl<'a, T, M> Transact<&'a mut T> for Replace<'a, T, M>
 where
-    M: Mutate<T> + TransactFrom<T>,
+    M: From<T> + Mutate<T>,
 {
     type Commit = &'a mut T;
     type Abort = &'a mut T;
