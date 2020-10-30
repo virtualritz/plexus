@@ -28,39 +28,54 @@ pub trait Transact<T = ()>: Sized {
 
 pub trait Bypass<T>: Transact<T> {
     fn bypass(self) -> Self::Commit;
+}
 
-    #[cfg(test)]
-    fn maybe_commit(self) -> Result<Self::Commit, (Self::Abort, Self::Error)> {
+pub trait MaybeCommit<T>: Bypass<T> {
+    fn maybe_commit(self) -> Result<Self::Commit, (Self::Abort, Self::Error)>;
+
+    #[allow(clippy::type_complexity)]
+    fn maybe_commit_with<F, X, E>(
+        self,
+        f: F,
+    ) -> Result<(Self::Commit, X), (Self::Abort, Self::Error)>
+    where
+        F: FnOnce(&mut Self) -> Result<X, E>,
+        E: Into<Self::Error>;
+}
+
+#[cfg(test)]
+impl<T, U> MaybeCommit<U> for T
+where
+    T: Bypass<U>,
+{
+    fn maybe_commit(self) -> Result<T::Commit, (T::Abort, T::Error)> {
         self.commit()
     }
 
-    #[cfg(not(test))]
-    fn maybe_commit(self) -> Result<Self::Commit, (Self::Abort, Self::Error)> {
+    #[allow(clippy::type_complexity)]
+    fn maybe_commit_with<F, X, E>(self, f: F) -> Result<(T::Commit, X), (T::Abort, T::Error)>
+    where
+        F: FnOnce(&mut T) -> Result<X, E>,
+        E: Into<T::Error>,
+    {
+        self.commit_with(f)
+    }
+}
+
+#[cfg(not(test))]
+impl<T, U> MaybeCommit<U> for T
+where
+    T: Bypass<U>,
+{
+    fn maybe_commit(self) -> Result<T::Commit, (T::Abort, T::Error)> {
         Ok(self.bypass())
     }
 
     #[allow(clippy::type_complexity)]
-    #[cfg(test)]
-    fn maybe_commit_with<F, U, E>(
-        self,
-        f: F,
-    ) -> Result<(Self::Commit, U), (Self::Abort, Self::Error)>
+    fn maybe_commit_with<F, X, E>(mut self, f: F) -> Result<(T::Commit, X), (T::Abort, T::Error)>
     where
-        F: FnOnce(&mut Self) -> Result<U, E>,
-        E: Into<Self::Error>,
-    {
-        self.commit_with(f)
-    }
-
-    #[allow(clippy::type_complexity)]
-    #[cfg(not(test))]
-    fn maybe_commit_with<F, U, E>(
-        mut self,
-        f: F,
-    ) -> Result<(Self::Commit, U), (Self::Abort, Self::Error)>
-    where
-        F: FnOnce(&mut Self) -> Result<U, E>,
-        E: Into<Self::Error>,
+        F: FnOnce(&mut T) -> Result<X, E>,
+        E: Into<T::Error>,
     {
         match f(&mut self) {
             Ok(value) => Ok((self.bypass(), value)),
