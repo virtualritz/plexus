@@ -37,6 +37,9 @@ use crate::transact::{Bypass, Transact};
 //       https://github.com/rust-lang/rust/issues/70703
 //       https://github.com/rust-lang/rust/issues/47897
 
+type StorageOf<E> = <E as Entity>::Storage;
+type JournalOf<E> = Journaled<StorageOf<E>, E>;
+
 /// Marker trait for graph representations that promise to be in a consistent
 /// state.
 ///
@@ -74,10 +77,10 @@ where
     M: Parametric,
 {
     type Graph = M;
-    type VertexStorage = <Vertex<Data<M>> as Entity>::Storage;
-    type ArcStorage = <Arc<Data<M>> as Entity>::Storage;
-    type EdgeStorage = <Edge<Data<M>> as Entity>::Storage;
-    type FaceStorage = <Face<Data<M>> as Entity>::Storage;
+    type VertexStorage = StorageOf<Vertex<Data<M>>>;
+    type ArcStorage = StorageOf<Arc<Data<M>>>;
+    type EdgeStorage = StorageOf<Edge<Data<M>>>;
+    type FaceStorage = StorageOf<Face<Data<M>>>;
 }
 
 pub struct Transacted<M>
@@ -87,16 +90,15 @@ where
     phantom: PhantomData<M>,
 }
 
-// TODO: Implement this in terms of `Immediate`.
 impl<M> Mode for Transacted<M>
 where
     M: Parametric,
 {
     type Graph = M;
-    type VertexStorage = Journaled<<Vertex<Data<M>> as Entity>::Storage, Vertex<Data<M>>>;
-    type ArcStorage = Journaled<<Arc<Data<M>> as Entity>::Storage, Arc<Data<M>>>;
-    type EdgeStorage = Journaled<<Edge<Data<M>> as Entity>::Storage, Edge<Data<M>>>;
-    type FaceStorage = Journaled<<Face<Data<M>> as Entity>::Storage, Face<Data<M>>>;
+    type VertexStorage = JournalOf<Vertex<Data<M>>>;
+    type ArcStorage = JournalOf<Arc<Data<M>>>;
+    type EdgeStorage = JournalOf<Edge<Data<M>>>;
+    type FaceStorage = JournalOf<Face<Data<M>>>;
 }
 
 /// Graph mutation.
