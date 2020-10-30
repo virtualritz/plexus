@@ -84,21 +84,24 @@ impl<M> Transact<OwnedCore<Data<M>>> for VertexMutation<Immediate<M>>
 where
     M: Parametric,
 {
-    type Output = OwnedCore<Data<M>>;
+    type Commit = OwnedCore<Data<M>>;
+    type Abort = ();
     type Error = GraphError;
 
-    fn commit(self) -> Result<Self::Output, Self::Error> {
+    fn commit(self) -> Result<Self::Commit, (Self::Abort, Self::Error)> {
         let VertexMutation {
             storage: vertices, ..
         } = self;
         // In a consistent graph, all vertices must have a leading arc.
         for (_, vertex) in vertices.as_storage().iter() {
             if vertex.arc.is_none() {
-                return Err(GraphError::TopologyMalformed);
+                return Err(((), GraphError::TopologyMalformed));
             }
         }
         Ok(Core::empty().fuse(vertices))
     }
+
+    fn abort(self) -> Self::Abort {}
 }
 
 pub struct VertexRemoveCache {

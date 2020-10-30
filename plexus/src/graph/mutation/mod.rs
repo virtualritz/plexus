@@ -87,6 +87,7 @@ where
     phantom: PhantomData<M>,
 }
 
+// TODO: Implement this in terms of `Immediate`.
 impl<M> Mode for Transacted<M>
 where
     M: Parametric,
@@ -223,12 +224,15 @@ impl<M> Transact<M> for Mutation<Immediate<M>>
 where
     M: Consistent + From<OwnedCore<Data<M>>> + Parametric + Into<OwnedCore<Data<M>>>,
 {
-    type Output = M;
+    type Commit = M;
+    type Abort = ();
     type Error = GraphError;
 
-    fn commit(self) -> Result<Self::Output, Self::Error> {
+    fn commit(self) -> Result<Self::Commit, (Self::Abort, Self::Error)> {
         self.inner.commit().map(|core| core.into())
     }
+
+    fn abort(self) -> Self::Abort {}
 }
 
 pub trait Mutable:

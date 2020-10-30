@@ -174,10 +174,11 @@ impl<M> Transact<OwnedCore<Data<M>>> for EdgeMutation<Immediate<M>>
 where
     M: Parametric,
 {
-    type Output = OwnedCore<Data<M>>;
+    type Commit = OwnedCore<Data<M>>;
+    type Abort = ();
     type Error = GraphError;
 
-    fn commit(self) -> Result<Self::Output, Self::Error> {
+    fn commit(self) -> Result<Self::Commit, (Self::Abort, Self::Error)> {
         let EdgeMutation {
             inner,
             storage: (arcs, edges),
@@ -187,11 +188,13 @@ where
         // associated edge.
         for (_, arc) in arcs.as_storage().iter() {
             if !(and!(&arc.next, &arc.previous, &arc.edge)) {
-                return Err(GraphError::TopologyMalformed);
+                return Err(((), GraphError::TopologyMalformed));
             }
         }
         inner.commit().map(move |core| core.fuse(arcs).fuse(edges))
     }
+
+    fn abort(self) -> Self::Abort {}
 }
 
 struct ArcRemoveCache {

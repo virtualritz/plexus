@@ -1293,7 +1293,7 @@ where
             let geometry = geometry.into_geometry();
             mutation::face::insert_with(&mut mutation, cache, || (Default::default(), geometry))?;
         }
-        mutation.commit()
+        mutation.commit().map_err(|(_, error)| error)
     }
 }
 
@@ -1331,7 +1331,7 @@ where
             let cache = FaceInsertCache::from_storage(&mutation, &perimeter)?;
             mutation::face::insert_with(&mut mutation, cache, Default::default)?;
         }
-        mutation.commit()
+        mutation.commit().map_err(|(_, error)| error)
     }
 }
 
@@ -1383,7 +1383,7 @@ where
             let cache = FaceInsertCache::from_storage(&mutation, &perimeter)?;
             mutation::face::insert_with(&mut mutation, cache, Default::default)?;
         }
-        mutation.commit()
+        mutation.commit().map_err(|(_, error)| error)
     }
 }
 
@@ -1469,7 +1469,7 @@ where
             let cache = FaceInsertCache::from_storage(&mutation, &perimeter)?;
             mutation::face::insert_with(&mut mutation, cache, Default::default)?;
         }
-        mutation.commit()
+        mutation.commit().map_err(|(_, error)| error)
     }
 }
 

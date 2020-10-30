@@ -702,6 +702,7 @@ where
         Mutation::replace(storage, Default::default())
             .commit_with(|mutation| edge::split_with(mutation, cache, f))
             .map(|(storage, m)| Bind::bind(storage, m).expect_consistent())
+            .map_err(|(_, error)| error)
             .expect_consistent()
     }
 
@@ -849,6 +850,7 @@ where
         Ok(Mutation::replace(storage, Default::default())
             .commit_with(|mutation| edge::bridge(mutation, cache))
             .map(|(storage, face)| Bind::bind(storage, face).expect_consistent())
+            .map_err(|(_, error)| error)
             .expect_consistent())
     }
 
@@ -951,6 +953,7 @@ where
         Ok(Mutation::replace(storage, Default::default())
             .commit_with(|mutation| edge::extrude_with(mutation, cache, f))
             .map(|(storage, arc)| Bind::bind(storage, arc).expect_consistent())
+            .map_err(|(_, error)| error)
             .expect_consistent())
     }
 
@@ -970,6 +973,7 @@ where
         Mutation::replace(storage, Default::default())
             .commit_with(|mutation| edge::remove(mutation, cache))
             .map(|(storage, _)| Bind::bind(storage, a))
+            .map_err(|(_, error)| error)
             .expect_consistent()
     }
 }

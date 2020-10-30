@@ -177,11 +177,12 @@ impl<M> Transact<OwnedCore<Data<M>>> for FaceMutation<Immediate<M>>
 where
     M: Parametric,
 {
-    type Output = OwnedCore<Data<M>>;
+    type Commit = OwnedCore<Data<M>>;
+    type Abort = ();
     type Error = GraphError;
 
     // TODO: Ensure that faces are in a consistent state.
-    fn commit(self) -> Result<Self::Output, Self::Error> {
+    fn commit(self) -> Result<Self::Commit, (Self::Abort, Self::Error)> {
         let FaceMutation {
             inner,
             storage: faces,
@@ -189,6 +190,8 @@ where
         } = self;
         inner.commit().map(move |core| core.fuse(faces))
     }
+
+    fn abort(self) -> Self::Abort {}
 }
 
 pub struct FaceInsertCache {

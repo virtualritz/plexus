@@ -56,13 +56,16 @@ impl<G> Transact<<Self as ClosedInput>::Input> for GraphBuilder<G>
 where
     G: GraphData,
 {
-    type Output = MeshGraph<G>;
+    type Commit = MeshGraph<G>;
+    type Abort = ();
     type Error = GraphError;
 
-    fn commit(self) -> Result<Self::Output, Self::Error> {
+    fn commit(self) -> Result<Self::Commit, (Self::Abort, Self::Error)> {
         let GraphBuilder { mutation } = self;
         mutation.commit()
     }
+
+    fn abort(self) -> Self::Abort {}
 }
 
 impl<G> SurfaceBuilder for GraphBuilder<G>

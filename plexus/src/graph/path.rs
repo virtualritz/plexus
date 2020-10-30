@@ -489,6 +489,7 @@ where
         Ok(Mutation::replace(storage, Default::default())
             .commit_with(|mutation| path::extrude_contour_with(mutation, cache, f))
             .map(|(storage, face)| Bind::bind(storage, face).expect_consistent())
+            .map_err(|(_, error)| error)
             .expect_consistent())
     }
 

@@ -579,6 +579,7 @@ where
         Mutation::replace(storage, Default::default())
             .commit_with(|mutation| vertex::remove(mutation, cache))
             .map(|_| ())
+            .map_err(|(_, error)| error)
             .expect_consistent()
     }
 }
