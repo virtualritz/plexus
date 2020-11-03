@@ -6,17 +6,40 @@ use std::ops::{Deref, DerefMut};
 use crate::entity::borrow::Reborrow;
 use crate::entity::storage::{AsStorage, AsStorageMut, Fuse, StorageObject};
 use crate::entity::view::{Bind, ClosedView, Rebind, Unbind};
-use crate::entity::Entity;
-use crate::graph::core::{Core, OwnedCore, RefCore};
+use crate::graph::core::Core;
 use crate::graph::data::{Data, GraphData, Parametric};
 use crate::graph::edge::{Arc, ArcKey, ArcView, Edge};
 use crate::graph::face::{Face, FaceKey, FaceView, ToRing};
 use crate::graph::mutation::edge::{self, ArcBridgeCache, EdgeMutation};
-use crate::graph::mutation::{vertex, Consistent, Immediate, Mode, Mutable, Mutation};
+use crate::graph::mutation::{vertex, Consistent, Immediate, Mode, Mutable, Mutation, Transacted};
 use crate::graph::vertex::{Vertex, VertexKey, VertexView};
 use crate::graph::GraphError;
 use crate::transact::{Bypass, Transact};
 use crate::{DynamicArity, IteratorExt as _};
+
+type ModalCore<P> = Core<
+    Data<<P as Mode>::Graph>,
+    <P as Mode>::VertexStorage,
+    <P as Mode>::ArcStorage,
+    <P as Mode>::EdgeStorage,
+    <P as Mode>::FaceStorage,
+>;
+#[cfg(not(all(nightly, feature = "unstable")))]
+pub type RefCore<'a, G> = Core<
+    G,
+    &'a StorageObject<Vertex<G>>,
+    &'a StorageObject<Arc<G>>,
+    &'a StorageObject<Edge<G>>,
+    &'a StorageObject<Face<G>>,
+>;
+#[cfg(all(nightly, feature = "unstable"))]
+pub type RefCore<'a, G> = Core<
+    G,
+    &'a StorageObject<'a, Vertex<G>>,
+    &'a StorageObject<'a, Arc<G>>,
+    &'a StorageObject<'a, Edge<G>>,
+    &'a StorageObject<'a, Face<G>>,
+>;
 
 pub struct FaceMutation<P>
 where
@@ -135,7 +158,7 @@ where
     }
 }
 
-impl<M> Bypass<OwnedCore<Data<M>>> for FaceMutation<Immediate<M>>
+impl<M> Bypass<ModalCore<Immediate<M>>> for FaceMutation<Immediate<M>>
 where
     M: Parametric,
 {
@@ -170,28 +193,24 @@ where
     }
 }
 
-impl<P> From<OwnedCore<Data<P::Graph>>> for FaceMutation<P>
+impl<P> From<ModalCore<P>> for FaceMutation<P>
 where
     P: Mode,
-    P::VertexStorage: From<<Vertex<Data<P::Graph>> as Entity>::Storage>,
-    P::ArcStorage: From<<Arc<Data<P::Graph>> as Entity>::Storage>,
-    P::EdgeStorage: From<<Edge<Data<P::Graph>> as Entity>::Storage>,
-    P::FaceStorage: From<<Face<Data<P::Graph>> as Entity>::Storage>,
 {
-    fn from(core: OwnedCore<Data<P::Graph>>) -> Self {
+    fn from(core: ModalCore<P>) -> Self {
         let (vertices, arcs, edges, faces) = core.unfuse();
         FaceMutation {
-            storage: faces.into(),
+            storage: faces,
             inner: Core::empty().fuse(vertices).fuse(arcs).fuse(edges).into(),
         }
     }
 }
 
-impl<M> Transact<OwnedCore<Data<M>>> for FaceMutation<Immediate<M>>
+impl<M> Transact<ModalCore<Immediate<M>>> for FaceMutation<Immediate<M>>
 where
     M: Parametric,
 {
-    type Commit = OwnedCore<Data<M>>;
+    type Commit = ModalCore<Immediate<M>>;
     type Abort = ();
     type Error = GraphError;
 
@@ -206,6 +225,37 @@ where
     }
 
     fn abort(self) -> Self::Abort {}
+}
+
+impl<M> Transact<ModalCore<Transacted<M>>> for FaceMutation<Transacted<M>>
+where
+    M: Parametric,
+{
+    type Commit = ModalCore<Transacted<M>>;
+    type Abort = ModalCore<Transacted<M>>;
+    type Error = GraphError;
+
+    // TODO: Ensure that faces are in a consistent state.
+    fn commit(self) -> Result<Self::Commit, (Self::Abort, Self::Error)> {
+        let FaceMutation {
+            inner,
+            storage: faces,
+            ..
+        } = self;
+        match inner.commit() {
+            Ok(core) => Ok(core.fuse(faces)),
+            Err((core, error)) => Err((core.fuse(faces), error)),
+        }
+    }
+
+    fn abort(self) -> Self::Abort {
+        let FaceMutation {
+            inner,
+            storage: faces,
+            ..
+        } = self;
+        inner.abort().fuse(faces)
+    }
 }
 
 pub struct FaceInsertCache {

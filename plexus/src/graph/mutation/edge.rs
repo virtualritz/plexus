@@ -4,14 +4,13 @@ use std::ops::{Deref, DerefMut};
 use crate::entity::borrow::Reborrow;
 use crate::entity::storage::{AsStorage, AsStorageMut, Fuse, StorageObject};
 use crate::entity::view::{Bind, ClosedView, Rebind};
-use crate::entity::Entity;
 use crate::graph::core::Core;
 use crate::graph::data::{Data, GraphData, Parametric};
 use crate::graph::edge::{Arc, ArcKey, ArcView, Edge, EdgeKey};
 use crate::graph::face::{Face, FaceKey};
 use crate::graph::mutation::face::{self, FaceInsertCache, FaceRemoveCache};
 use crate::graph::mutation::vertex::{self, VertexMutation};
-use crate::graph::mutation::{Consistent, Immediate, Mode, Mutable, Mutation};
+use crate::graph::mutation::{Consistent, Immediate, Mode, Mutable, Mutation, Transacted};
 use crate::graph::vertex::{Vertex, VertexKey, VertexView};
 use crate::graph::GraphError;
 use crate::transact::{Bypass, Transact};
@@ -20,11 +19,11 @@ use crate::IteratorExt as _;
 pub type CompositeEdgeKey = (EdgeKey, (ArcKey, ArcKey));
 pub type CompositeEdge<G> = (Edge<G>, (Arc<G>, Arc<G>));
 
-type OwnedCore<G> = Core<
-    G,
-    <Vertex<G> as Entity>::Storage,
-    <Arc<G> as Entity>::Storage,
-    <Edge<G> as Entity>::Storage,
+type ModalCore<P> = Core<
+    Data<<P as Mode>::Graph>,
+    <P as Mode>::VertexStorage,
+    <P as Mode>::ArcStorage,
+    <P as Mode>::EdgeStorage,
     (),
 >;
 #[cfg(not(all(nightly, feature = "unstable")))]
@@ -132,7 +131,7 @@ where
     }
 }
 
-impl<M> Bypass<OwnedCore<Data<M>>> for EdgeMutation<Immediate<M>>
+impl<M> Bypass<ModalCore<Immediate<M>>> for EdgeMutation<Immediate<M>>
 where
     M: Parametric,
 {
@@ -167,31 +166,29 @@ where
     }
 }
 
-impl<P> From<OwnedCore<Data<P::Graph>>> for EdgeMutation<P>
+impl<P> From<ModalCore<P>> for EdgeMutation<P>
 where
     P: Mode,
-    P::VertexStorage: From<<Vertex<Data<P::Graph>> as Entity>::Storage>,
-    P::ArcStorage: From<<Arc<Data<P::Graph>> as Entity>::Storage>,
-    P::EdgeStorage: From<<Edge<Data<P::Graph>> as Entity>::Storage>,
-    P::FaceStorage: From<<Face<Data<P::Graph>> as Entity>::Storage>,
 {
-    fn from(core: OwnedCore<Data<P::Graph>>) -> Self {
+    fn from(core: ModalCore<P>) -> Self {
         let (vertices, arcs, edges, ..) = core.unfuse();
         EdgeMutation {
             inner: Core::empty().fuse(vertices).into(),
-            storage: (arcs.into(), edges.into()),
+            storage: (arcs, edges),
         }
     }
 }
 
-impl<M> Transact<OwnedCore<Data<M>>> for EdgeMutation<Immediate<M>>
+impl<M> Transact<ModalCore<Immediate<M>>> for EdgeMutation<Immediate<M>>
 where
     M: Parametric,
 {
-    type Commit = OwnedCore<Data<M>>;
+    type Commit = ModalCore<Immediate<M>>;
     type Abort = ();
     type Error = GraphError;
 
+    // TODO: Refactor consistency checks and share them among `commit`
+    //       implementations.
     fn commit(self) -> Result<Self::Commit, (Self::Abort, Self::Error)> {
         let EdgeMutation {
             inner,
@@ -209,6 +206,37 @@ where
     }
 
     fn abort(self) -> Self::Abort {}
+}
+
+impl<M> Transact<ModalCore<Transacted<M>>> for EdgeMutation<Transacted<M>>
+where
+    M: Parametric,
+{
+    type Commit = ModalCore<Transacted<M>>;
+    type Abort = ModalCore<Transacted<M>>;
+    type Error = GraphError;
+
+    // TODO: Ensure that faces are in a consistent state.
+    fn commit(self) -> Result<Self::Commit, (Self::Abort, Self::Error)> {
+        let EdgeMutation {
+            inner,
+            storage: (arcs, edges),
+            ..
+        } = self;
+        match inner.commit() {
+            Ok(core) => Ok(core.fuse(arcs).fuse(edges)),
+            Err((core, error)) => Err((core.fuse(arcs).fuse(edges), error)),
+        }
+    }
+
+    fn abort(self) -> Self::Abort {
+        let EdgeMutation {
+            inner,
+            storage: (arcs, edges),
+            ..
+        } = self;
+        inner.abort().fuse(arcs).fuse(edges)
+    }
 }
 
 struct ArcRemoveCache {
